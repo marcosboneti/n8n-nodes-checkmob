@@ -22,7 +22,7 @@ export class CheckmobApi implements ICredentialType {
 			placeholder: 'digite o seu login (usuário ou e-mail)',
 		},
 		{
-			displayName: 'Password',
+			displayName: 'Senha',
 			name: 'password',
 			type: 'string',
 			typeOptions: { password: true },

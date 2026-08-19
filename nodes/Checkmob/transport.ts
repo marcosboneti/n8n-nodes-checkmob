@@ -1,9 +1,13 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+export function toNumArray(raw: string): number[] {
+	return raw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+}
+
 export function toList(raw: unknown): IDataObject[] {
 	if (Array.isArray(raw)) return raw as IDataObject[];
-	if (Array.isArray((raw as IDataObject)?.items)) return (raw as IDataObject).items as IDataObject[];
+	if (Array.isArray((raw as IDataObject)?.dados)) return (raw as IDataObject).dados as IDataObject[];
 	return raw != null ? [raw as IDataObject] : [];
 }
 
@@ -21,18 +25,41 @@ export function parseJson(
 
 export async function apiRequest(
 	this: IExecuteFunctions,
-	options: { method: string; url: string; headers: IDataObject; body?: IDataObject },
+	options: { method: string; url: string; headers: IDataObject; body?: IDataObject; qs?: IDataObject },
 ): Promise<{ statusCode: number; body: unknown }> {
 	const res = await this.helpers.httpRequest({
-		method: options.method as 'GET' | 'POST' | 'PUT' | 'DELETE',
+		method: options.method as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 		url: options.url,
 		headers: options.headers,
 		body: options.body,
+		qs: options.qs,
 		json: true,
 		returnFullResponse: true,
 		ignoreHttpStatusErrors: true,
 	});
-	return { statusCode: res.statusCode as number, body: res.body };
+
+	let body = res.body;
+	if (typeof body === 'string' && body.length) {
+		try { body = JSON.parse(body); } catch { /* keep as string */ }
+	}
+
+	return { statusCode: res.statusCode as number, body };
+}
+
+interface ErroCampo {
+	campo?: string | null;
+	codigo?: string | null;
+	mensagem?: string | null;
+}
+
+interface Problema {
+	tipo?: string | null;
+	titulo?: string | null;
+	status?: number;
+	codigo?: string | null;
+	detalhe?: string | null;
+	instancia?: string | null;
+	erros?: ErroCampo[] | null;
 }
 
 export function assertApiSuccess(
@@ -41,26 +68,26 @@ export function assertApiSuccess(
 	node: ReturnType<IExecuteFunctions['getNode']>,
 ): void {
 	if (statusCode >= 400) {
-		const errMsg = extractErrorMessage(body) ?? 'Erro retornado pela API.';
-		const errors = (body as IDataObject)?.errors;
-		const description = errors ? JSON.stringify(errors) : undefined;
+		const problema = body as Problema;
+		const errMsg = extractErrorMessage(problema) ?? 'Erro retornado pela API.';
+		const description = problema?.erros ? JSON.stringify(problema.erros) : undefined;
 		throw new NodeOperationError(
 			node,
-			`HTTP ${statusCode} — ${errMsg}`,
+			`HTTP ${statusCode} [${problema?.codigo ?? 'ERRO'}] — ${errMsg}`,
 			{ description },
 		);
 	}
 }
 
-function extractErrorMessage(body: unknown): string | undefined {
-	const item = (Array.isArray(body) ? body[0] : body) as IDataObject | undefined;
-	if (!item) return undefined;
+function extractErrorMessage(problema: Problema | undefined): string | undefined {
+	if (!problema) return undefined;
 
-	const errors = item?.errors;
-	if (errors && !Array.isArray(errors) && typeof errors === 'object') {
-		return Object.values(errors as Record<string, string[]>).flat().join(' | ');
+	if (Array.isArray(problema.erros) && problema.erros.length > 0) {
+		return problema.erros
+			.map((e) => [e.campo, e.mensagem ?? e.codigo].filter(Boolean).join(': '))
+			.join(' | ');
 	}
-	if (Array.isArray(errors) && errors.length > 0) return (errors as string[]).join(' | ');
-	if (typeof item?.title === 'string') return item.title;
+	if (typeof problema.detalhe === 'string' && problema.detalhe) return problema.detalhe;
+	if (typeof problema.titulo === 'string' && problema.titulo) return problema.titulo;
 	return undefined;
 }

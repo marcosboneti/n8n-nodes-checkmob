@@ -10,35 +10,27 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['category'] } },
 		options: [
-			{ name: 'Listar', value: 'list', description: 'Listar todas as categorias', action: 'Listar categorias' },
+			{ name: 'Listar', value: 'list', description: 'Listar categorias', action: 'Listar categorias' },
 		],
 		default: 'list',
 	},
 	{
-		displayName: 'Retornar Todos',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
+		displayName: 'Página',
+		name: 'page',
+		type: 'number',
+		default: 1,
+		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['category'], operation: ['list'] } },
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Página a buscar (começa em 1)',
 	},
 	{
-		displayName: 'Limite',
-		name: 'limit',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 50,
-		typeOptions: { minValue: 1, maxValue: 500 },
-		displayOptions: { show: { resource: ['category'], operation: ['list'], returnAll: [false] } },
-		description: 'Número máximo de resultados a retornar',
-	},
-	{
-		displayName: 'Pular',
-		name: 'skip',
-		type: 'number',
-		default: 0,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
 		displayOptions: { show: { resource: ['category'], operation: ['list'] } },
-		description: 'Número de linhas a pular (paginação)',
+		description: 'Itens por página (máximo 100)',
 	},
 	{
 		displayName: 'Busca',
@@ -46,7 +38,15 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['category'], operation: ['list'] } },
-		description: 'Filtrar categorias por nome ou palavra-chave',
+		description: 'Busca textual por nome ou palavra-chave',
+	},
+	{
+		displayName: 'Atualizado Após',
+		name: 'updatedAfter',
+		type: 'dateTime',
+		default: '',
+		displayOptions: { show: { resource: ['category'], operation: ['list'] } },
+		description: 'Sync incremental: retorna apenas registros atualizados após esta data',
 	},
 ];
 
@@ -59,21 +59,24 @@ export async function execute(
 	const operation = this.getNodeParameter('operation', i) as string;
 
 	if (operation === 'list') {
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? 0 : (this.getNodeParameter('limit', i, 50) as number);
-		const skip = this.getNodeParameter('skip', i, 0) as number;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
 		const search = this.getNodeParameter('search', i, '') as string;
+		const updatedAfter = this.getNodeParameter('updatedAfter', i, '') as string;
+
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (updatedAfter) reqBody.atualizado_apos = updatedAfter;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/category/list`,
+			url: `${baseUrl}/v2/categorias/list`,
 			headers: authHeaders,
-			body: { numberOfRows: limit, numberOfRowsSkipped: skip, search },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(toList(data));
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);
