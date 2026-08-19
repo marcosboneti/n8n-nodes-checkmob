@@ -1,18 +1,17 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
+import { apiRequest, assertApiSuccess, toList, toNumArray } from '../transport';
 
-function toNumArray(raw: string): number[] {
-	return raw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-}
+const LINK_ADD: Record<string, string> = {
+	linkClient: 'clientes',
+	linkGroup: 'grupos',
+	linkUser: 'usuarios',
+};
 
-const LINK_OPS: Record<string, { method: string; path: string }> = {
-	linkSegmentToClient: { method: 'POST',   path: 'linksegmenttoclient' },
-	deleteLinkClient:    { method: 'DELETE', path: 'deletelinkclient' },
-	linkGroup:           { method: 'POST',   path: 'linkgroup' },
-	deleteLinkGroup:     { method: 'DELETE', path: 'deletelinkgroup' },
-	linkUser:            { method: 'POST',   path: 'linkuser' },
-	deleteLinkUser:      { method: 'DELETE', path: 'deletelinkuser' },
+const LINK_REMOVE: Record<string, string> = {
+	deleteLinkClient: 'clientes',
+	deleteLinkGroup: 'grupos',
+	deleteLinkUser: 'usuarios',
 };
 
 export const description: INodeProperties[] = [
@@ -26,46 +25,51 @@ export const description: INodeProperties[] = [
 			{ name: 'Buscar', value: 'get', description: 'Buscar segmento pelo ID', action: 'Buscar segmento' },
 			{ name: 'Listar', value: 'list', description: 'Listar segmentos', action: 'Listar segmentos' },
 			{ name: 'Criar', value: 'post', description: 'Criar segmento', action: 'Criar segmento' },
-			{ name: 'Editar', value: 'put', description: 'Editar segmento', action: 'Editar segmento' },
-			{ name: 'Excluir', value: 'delete', description: 'Excluir segmentos pelos IDs', action: 'Excluir segmentos' },
-			{ name: 'Obter Vínculos', value: 'getLinks', description: 'Obter vínculos do segmento', action: 'Obter vínculos do segmento' },
-			{ name: 'Vincular ao Cliente', value: 'linkSegmentToClient', description: 'Vincular segmento a clientes', action: 'Vincular segmento a clientes' },
-			{ name: 'Remover Vínculo de Cliente', value: 'deleteLinkClient', description: 'Remover vínculo de clientes do segmento', action: 'Remover vínculo de clientes' },
-			{ name: 'Vincular Grupo', value: 'linkGroup', description: 'Vincular grupos ao segmento', action: 'Vincular grupos ao segmento' },
-			{ name: 'Remover Vínculo de Grupo', value: 'deleteLinkGroup', description: 'Remover vínculo de grupos do segmento', action: 'Remover vínculo de grupos' },
-			{ name: 'Vincular Usuário', value: 'linkUser', description: 'Vincular usuários ao segmento', action: 'Vincular usuários ao segmento' },
-			{ name: 'Remover Vínculo de Usuário', value: 'deleteLinkUser', description: 'Remover vínculo de usuários do segmento', action: 'Remover vínculo de usuários' },
+			{ name: 'Editar', value: 'put', description: 'Substituir segmento', action: 'Editar segmento' },
+			{ name: 'Excluir', value: 'delete', description: 'Excluir um segmento', action: 'Excluir segmento' },
+			{ name: 'Obter Vínculos', value: 'getLinks', description: 'Obter vínculos (usuários e grupos) do segmento', action: 'Obter vínculos do segmento' },
+			{ name: 'Vincular Cliente', value: 'linkClient', description: 'Vincular um cliente ao segmento', action: 'Vincular cliente ao segmento' },
+			{ name: 'Remover Vínculo de Cliente', value: 'deleteLinkClient', description: 'Desvincular um cliente do segmento', action: 'Remover vínculo de cliente' },
+			{ name: 'Vincular Grupo', value: 'linkGroup', description: 'Vincular um grupo ao segmento', action: 'Vincular grupo ao segmento' },
+			{ name: 'Remover Vínculo de Grupo', value: 'deleteLinkGroup', description: 'Desvincular um grupo do segmento', action: 'Remover vínculo de grupo' },
+			{ name: 'Vincular Usuário', value: 'linkUser', description: 'Vincular um usuário ao segmento', action: 'Vincular usuário ao segmento' },
+			{ name: 'Remover Vínculo de Usuário', value: 'deleteLinkUser', description: 'Desvincular um usuário do segmento', action: 'Remover vínculo de usuário' },
 		],
 		default: 'list',
 	},
 
-	// ── Buscar / Obter Vínculos ───────────────────────────────────────────────────
+	// ── Buscar / Editar / Excluir / Obter Vínculos ──────────────────────────────
 	{
 		displayName: 'ID do Segmento',
 		name: 'segmentId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['segment'], operation: ['get', 'getLinks'] } },
+		displayOptions: { show: { resource: ['segment'], operation: ['get', 'put', 'delete', 'getLinks'] } },
 	},
 
 	// ── Listar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'Número de Registros',
-		name: 'segNumberOfRows',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 50,
-		required: true,
+		default: 1,
 		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['segment'], operation: ['list'] } },
 	},
 	{
-		displayName: 'Registros a Pular',
-		name: 'segNumberOfRowsSkipped',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 0,
-		required: true,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
+		displayOptions: { show: { resource: ['segment'], operation: ['list'] } },
+	},
+	{
+		displayName: 'Busca',
+		name: 'search',
+		type: 'string',
+		default: '',
 		displayOptions: { show: { resource: ['segment'], operation: ['list'] } },
 	},
 	{
@@ -78,6 +82,13 @@ export const description: INodeProperties[] = [
 			{ name: 'Inativo', value: 'false' },
 		],
 		default: 'all',
+		displayOptions: { show: { resource: ['segment'], operation: ['list'] } },
+	},
+	{
+		displayName: 'Atualizado Após',
+		name: 'updatedAfter',
+		type: 'dateTime',
+		default: '',
 		displayOptions: { show: { resource: ['segment'], operation: ['list'] } },
 	},
 
@@ -109,55 +120,58 @@ export const description: INodeProperties[] = [
 
 	// ── Editar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Segmento',
-		name: 'segmentId',
-		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['segment'], operation: ['put'] } },
-	},
-	{
-		displayName: 'Campos',
-		name: 'segPutFields',
-		type: 'collection',
-		placeholder: 'Adicionar campo',
-		default: {},
-		displayOptions: { show: { resource: ['segment'], operation: ['put'] } },
-		options: [
-			{ displayName: 'Nome', name: 'name', type: 'string', default: '' },
-			{ displayName: 'Status', name: 'status', type: 'boolean', default: true },
-		],
-	},
-
-	// ── Excluir ──────────────────────────────────────────────────────────────────
-	{
-		displayName: 'IDs dos Segmentos (separados por vírgula)',
-		name: 'segDeleteIds',
+		displayName: 'Nome',
+		name: 'segPutName',
 		type: 'string',
 		default: '',
-		required: true,
-		displayOptions: { show: { resource: ['segment'], operation: ['delete'] } },
-		placeholder: '1,2,3',
+		displayOptions: { show: { resource: ['segment'], operation: ['put'] } },
+		description: 'Deixe vazio para preservar o nome atual',
+	},
+	{
+		displayName: 'Ativo',
+		name: 'segPutActive',
+		type: 'options',
+		options: [
+			{ name: 'Preservar Atual', value: 'keep' },
+			{ name: 'Ativo', value: 'true' },
+			{ name: 'Inativo', value: 'false' },
+		],
+		default: 'keep',
+		displayOptions: { show: { resource: ['segment'], operation: ['put'] } },
 	},
 
 	// ── Operações de Vínculo ─────────────────────────────────────────────────────
 	{
 		displayName: 'ID do Segmento',
-		name: 'segmentId',
+		name: 'segmentLinkId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['segment'], operation: ['linkSegmentToClient', 'deleteLinkClient', 'linkGroup', 'deleteLinkGroup', 'linkUser', 'deleteLinkUser'] } },
+		displayOptions: { show: { resource: ['segment'], operation: ['linkClient', 'deleteLinkClient', 'linkGroup', 'deleteLinkGroup', 'linkUser', 'deleteLinkUser'] } },
 	},
 	{
-		displayName: 'IDs (separados por vírgula)',
-		name: 'segIdsLinked',
-		type: 'string',
-		default: '',
+		displayName: 'ID do Cliente',
+		name: 'segLinkedIdClient',
+		type: 'number',
+		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['segment'], operation: ['linkSegmentToClient', 'deleteLinkClient', 'linkGroup', 'deleteLinkGroup', 'linkUser', 'deleteLinkUser'] } },
-		description: 'IDs dos clientes, grupos ou usuários. Ex: 1,2,3',
-		placeholder: '1,2,3',
+		displayOptions: { show: { resource: ['segment'], operation: ['linkClient', 'deleteLinkClient'] } },
+	},
+	{
+		displayName: 'ID do Grupo',
+		name: 'segLinkedIdGroup',
+		type: 'number',
+		default: 0,
+		required: true,
+		displayOptions: { show: { resource: ['segment'], operation: ['linkGroup', 'deleteLinkGroup'] } },
+	},
+	{
+		displayName: 'ID do Usuário',
+		name: 'segLinkedIdUser',
+		type: 'number',
+		default: 0,
+		required: true,
+		displayOptions: { show: { resource: ['segment'], operation: ['linkUser', 'deleteLinkUser'] } },
 	},
 ];
 
@@ -169,111 +183,143 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const operation = this.getNodeParameter('operation', i) as string;
 
-	if (operation === 'get' || operation === 'getLinks') {
+	if (operation === 'get') {
 		const id = this.getNodeParameter('segmentId', i) as number;
-		const path = operation === 'getLinks' ? 'getlinks' : 'get';
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'GET',
-			url: `${baseUrl}/api/v1/segment/${path}?id=${id}`,
+			url: `${baseUrl}/v2/segmentos/${id}`,
 			headers: authHeaders,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
+	}
+
+	if (operation === 'getLinks') {
+		const id = this.getNodeParameter('segmentId', i) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'GET',
+			url: `${baseUrl}/v2/segmentos/${id}/vinculos`,
+			headers: authHeaders,
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'list') {
-		const numberOfRows = this.getNodeParameter('segNumberOfRows', i) as number;
-		const numberOfRowsSkipped = this.getNodeParameter('segNumberOfRowsSkipped', i) as number;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const search = this.getNodeParameter('search', i, '') as string;
 		const activeParam = this.getNodeParameter('segActive', i, 'all') as string;
+		const updatedAfter = this.getNodeParameter('updatedAfter', i, '') as string;
 
-		const reqBody: IDataObject = { numberOfRows, numberOfRowsSkipped };
-		if (activeParam !== 'all') reqBody.active = activeParam === 'true';
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (activeParam !== 'all') reqBody.ativo = activeParam === 'true';
+		if (updatedAfter) reqBody.atualizado_apos = updatedAfter;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/segment/list`,
+			url: `${baseUrl}/v2/segmentos/list`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	if (operation === 'post') {
-		const name = this.getNodeParameter('segName', i) as string;
+		const nome = this.getNodeParameter('segName', i) as string;
 		const idsUsersRaw = this.getNodeParameter('segIdsUsers', i, '') as string;
 		const idsGroupsRaw = this.getNodeParameter('segIdsGroups', i, '') as string;
 
-		const reqBody: IDataObject = { name };
-		if (idsUsersRaw.trim()) reqBody.idsUsers = toNumArray(idsUsersRaw);
-		if (idsGroupsRaw.trim()) reqBody.idsGroups = toNumArray(idsGroupsRaw);
+		const reqBody: IDataObject = { nome };
+		if (idsUsersRaw.trim()) reqBody.ids_usuarios = toNumArray(idsUsersRaw);
+		if (idsGroupsRaw.trim()) reqBody.ids_grupos = toNumArray(idsGroupsRaw);
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/segment/post`,
+			url: `${baseUrl}/v2/segmentos/post`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'put') {
 		const id = this.getNodeParameter('segmentId', i) as number;
-		const fields = this.getNodeParameter('segPutFields', i, {}) as IDataObject;
+		const nome = this.getNodeParameter('segPutName', i, '') as string;
+		const activeParam = this.getNodeParameter('segPutActive', i, 'keep') as string;
+
+		const reqBody: IDataObject = {};
+		if (nome.trim()) reqBody.nome = nome;
+		if (activeParam !== 'keep') reqBody.ativo = activeParam === 'true';
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'PUT',
-			url: `${baseUrl}/api/v1/segment/put`,
+			url: `${baseUrl}/v2/segmentos/${id}`,
 			headers: authHeaders,
-			body: { id, ...fields },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'delete') {
-		const ids = toNumArray(this.getNodeParameter('segDeleteIds', i) as string);
-
-		const res = await this.helpers.httpRequest({
-			method: 'DELETE',
-			url: `${baseUrl}/api/v1/segment/delete`,
-			headers: authHeaders,
-			body: ids,
-			json: true,
-			returnFullResponse: true,
-			ignoreHttpStatusErrors: true,
-		});
-		assertApiSuccess(res.statusCode as number, res.body, this.getNode());
-
-		const data = (res.body as IDataObject)?.data ?? res.body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
-	}
-
-	if (LINK_OPS[operation]) {
-		const { method, path } = LINK_OPS[operation];
-		const idSegment = this.getNodeParameter('segmentId', i) as number;
-		const idsClients = toNumArray(this.getNodeParameter('segIdsLinked', i) as string);
+		const id = this.getNodeParameter('segmentId', i) as number;
 
 		const { statusCode, body } = await apiRequest.call(this, {
-			method,
-			url: `${baseUrl}/api/v1/segment/${path}`,
+			method: 'DELETE',
+			url: `${baseUrl}/v2/segmentos/${id}`,
 			headers: authHeaders,
-			body: { idSegment, idsClients } as IDataObject,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([{ id, excluido: true }]);
+	}
+
+	if (LINK_ADD[operation]) {
+		const subPath = LINK_ADD[operation];
+		const idSegment = this.getNodeParameter('segmentLinkId', i) as number;
+		const linkedId = this.getNodeParameter(
+			subPath === 'clientes' ? 'segLinkedIdClient' : subPath === 'grupos' ? 'segLinkedIdGroup' : 'segLinkedIdUser',
+			i,
+		) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'POST',
+			url: `${baseUrl}/v2/segmentos/${idSegment}/${subPath}`,
+			headers: authHeaders,
+			body: { ids: [linkedId] },
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ idSegment, linkedId, vinculado: true }]);
+	}
+
+	if (LINK_REMOVE[operation]) {
+		const subPath = LINK_REMOVE[operation];
+		const idSegment = this.getNodeParameter('segmentLinkId', i) as number;
+		const linkedId = this.getNodeParameter(
+			subPath === 'clientes' ? 'segLinkedIdClient' : subPath === 'grupos' ? 'segLinkedIdGroup' : 'segLinkedIdUser',
+			i,
+		) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'DELETE',
+			url: `${baseUrl}/v2/segmentos/${idSegment}/${subPath}/${linkedId}`,
+			headers: authHeaders,
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ idSegment, linkedId, desvinculado: true }]);
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

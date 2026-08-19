@@ -12,27 +12,27 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import * as category from './resources/category';
+import * as customField from './resources/customField';
+import * as typeService from './resources/typeService';
+import * as step from './resources/step';
+import * as temperature from './resources/temperature';
+import * as serviceStatus from './resources/serviceStatus';
+import * as marketSector from './resources/marketSector';
+import * as objective from './resources/objective';
+import * as group from './resources/group';
+import * as segment from './resources/segment';
 
 // TODO: migrar os recursos abaixo para a API v2 e reativar aqui.
-// import * as customField from './resources/customField';
 // import * as client from './resources/client';
 // import * as addressClient from './resources/addressClient';
 // import * as addressPerson from './resources/addressPerson';
 // import * as user from './resources/user';
-// import * as typeService from './resources/typeService';
-// import * as step from './resources/step';
-// import * as temperature from './resources/temperature';
-// import * as serviceStatus from './resources/serviceStatus';
-// import * as marketSector from './resources/marketSector';
-// import * as group from './resources/group';
 // import * as noteClient from './resources/noteClient';
-// import * as objective from './resources/objective';
 // import * as serviceOrder from './resources/serviceOrder';
 // import * as person from './resources/person';
 // import * as service from './resources/service';
 // import * as checklist from './resources/checklist';
 // import * as answerChecklist from './resources/answerChecklist';
-// import * as segment from './resources/segment';
 
 interface ResourceModule {
 	description: INodeProperties[];
@@ -46,6 +46,15 @@ interface ResourceModule {
 
 const resources: Record<string, ResourceModule> = {
 	category,
+	customField,
+	typeService,
+	step,
+	temperature,
+	serviceStatus,
+	marketSector,
+	objective,
+	group,
+	segment,
 };
 
 const resourceSelector: INodeProperties = {
@@ -55,6 +64,15 @@ const resourceSelector: INodeProperties = {
 	noDataExpression: true,
 	options: [
 		{ name: 'Categoria', value: 'category', description: 'Listar categorias' },
+		{ name: 'Campo Personalizado', value: 'customField', description: 'Listar campos personalizados' },
+		{ name: 'Etapa', value: 'step', description: 'Listar etapas' },
+		{ name: 'Grupo', value: 'group', description: 'Gerenciar grupos' },
+		{ name: 'Objetivo', value: 'objective', description: 'Listar objetivos' },
+		{ name: 'Segmento', value: 'segment', description: 'Gerenciar segmentos' },
+		{ name: 'Setor de Mercado', value: 'marketSector', description: 'Listar setores de mercado' },
+		{ name: 'Status de Serviço', value: 'serviceStatus', description: 'Listar status de serviço' },
+		{ name: 'Temperatura', value: 'temperature', description: 'Listar temperaturas' },
+		{ name: 'Tipo de Serviço', value: 'typeService', description: 'Listar tipos de serviço' },
 	],
 	default: 'category',
 };
@@ -90,6 +108,15 @@ export class Checkmob implements INodeType {
 			resourceSelector,
 			languageSelector,
 			...category.description,
+			...customField.description,
+			...typeService.description,
+			...step.description,
+			...temperature.description,
+			...serviceStatus.description,
+			...marketSector.description,
+			...objective.description,
+			...group.description,
+			...segment.description,
 		],
 	};
 

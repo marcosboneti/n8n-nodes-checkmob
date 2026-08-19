@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
+import { apiRequest, assertApiSuccess, toList } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -10,47 +10,43 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['objective'] } },
 		options: [
-			{ name: 'Buscar', value: 'get', description: 'Buscar objetivo pelo ID', action: 'Buscar objetivo' },
-			{ name: 'Listar', value: 'list', description: 'Listar objetivos com paginação', action: 'Listar objetivos' },
+			{ name: 'Listar', value: 'list', description: 'Listar objetivos', action: 'Listar objetivos' },
 		],
 		default: 'list',
 	},
 	{
-		displayName: 'ID do Objetivo',
-		name: 'objectiveId',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['objective'], operation: ['get'] } },
-		description: 'ID do objetivo a buscar',
-	},
-	{
-		displayName: 'Número de Registros',
-		name: 'objNumberOfRows',
-		type: 'number',
-		default: 50,
-		required: true,
+		default: 1,
 		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['objective'], operation: ['list'] } },
-		description: 'Quantidade de registros a retornar (mínimo 1)',
+		description: 'Página a buscar (começa em 1)',
 	},
 	{
-		displayName: 'Registros a Pular',
-		name: 'objNumberOfRowsSkipped',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 0,
-		required: true,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
 		displayOptions: { show: { resource: ['objective'], operation: ['list'] } },
-		description: 'Quantidade de registros a pular (paginação)',
+		description: 'Itens por página (máximo 100)',
 	},
 	{
 		displayName: 'Busca',
-		name: 'objSearch',
+		name: 'search',
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['objective'], operation: ['list'] } },
-		description: 'Filtro de busca por nome',
+		description: 'Busca textual por nome ou palavra-chave',
+	},
+	{
+		displayName: 'Atualizado Após',
+		name: 'updatedAfter',
+		type: 'dateTime',
+		default: '',
+		displayOptions: { show: { resource: ['objective'], operation: ['list'] } },
+		description: 'Sync incremental: retorna apenas registros atualizados após esta data',
 	},
 ];
 
@@ -62,35 +58,25 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const operation = this.getNodeParameter('operation', i) as string;
 
-	if (operation === 'get') {
-		const id = this.getNodeParameter('objectiveId', i) as number;
-
-		const { statusCode, body } = await apiRequest.call(this, {
-			method: 'GET',
-			url: `${baseUrl}/api/v1/objective/get?id=${id}`,
-			headers: authHeaders,
-		});
-		assertApiSuccess(statusCode, body, this.getNode());
-
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
-	}
-
 	if (operation === 'list') {
-		const numberOfRows = this.getNodeParameter('objNumberOfRows', i) as number;
-		const numberOfRowsSkipped = this.getNodeParameter('objNumberOfRowsSkipped', i) as number;
-		const search = this.getNodeParameter('objSearch', i, '') as string;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const search = this.getNodeParameter('search', i, '') as string;
+		const updatedAfter = this.getNodeParameter('updatedAfter', i, '') as string;
+
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (updatedAfter) reqBody.atualizado_apos = updatedAfter;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/objective/list`,
+			url: `${baseUrl}/v2/objetivos/list`,
 			headers: authHeaders,
-			body: { numberOfRows, numberOfRowsSkipped, search },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

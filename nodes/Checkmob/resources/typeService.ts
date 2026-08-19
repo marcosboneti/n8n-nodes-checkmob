@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
+import { apiRequest, assertApiSuccess, toList } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -10,47 +10,43 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['typeService'] } },
 		options: [
-			{ name: 'Buscar', value: 'get', description: 'Buscar tipo de serviço pelo ID', action: 'Buscar tipo de serviço' },
-			{ name: 'Listar', value: 'list', description: 'Listar tipos de serviço com paginação', action: 'Listar tipos de serviço' },
+			{ name: 'Listar', value: 'list', description: 'Listar tipos de serviço', action: 'Listar tipos de serviço' },
 		],
 		default: 'list',
 	},
 	{
-		displayName: 'ID do Tipo de Serviço',
-		name: 'idTypeService',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['typeService'], operation: ['get'] } },
-		description: 'ID do tipo de serviço a buscar',
-	},
-	{
-		displayName: 'Número de Registros',
-		name: 'numberOfRows',
-		type: 'number',
-		default: 50,
-		required: true,
+		default: 1,
 		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['typeService'], operation: ['list'] } },
-		description: 'Quantidade de registros a retornar (mínimo 1)',
+		description: 'Página a buscar (começa em 1)',
 	},
 	{
-		displayName: 'Registros a Pular',
-		name: 'numberOfRowsSkipped',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 0,
-		required: true,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
 		displayOptions: { show: { resource: ['typeService'], operation: ['list'] } },
-		description: 'Quantidade de registros a pular (paginação)',
+		description: 'Itens por página (máximo 100)',
 	},
 	{
-		displayName: 'Pesquisa',
-		name: 'pesquisa',
+		displayName: 'Busca',
+		name: 'search',
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['typeService'], operation: ['list'] } },
-		description: 'Filtro de pesquisa por nome',
+		description: 'Busca textual por nome ou palavra-chave',
+	},
+	{
+		displayName: 'Atualizado Após',
+		name: 'updatedAfter',
+		type: 'dateTime',
+		default: '',
+		displayOptions: { show: { resource: ['typeService'], operation: ['list'] } },
+		description: 'Sync incremental: retorna apenas registros atualizados após esta data',
 	},
 ];
 
@@ -62,35 +58,25 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const operation = this.getNodeParameter('operation', i) as string;
 
-	if (operation === 'get') {
-		const idTypeService = this.getNodeParameter('idTypeService', i) as number;
-
-		const { statusCode, body } = await apiRequest.call(this, {
-			method: 'GET',
-			url: `${baseUrl}/api/v1/typeservice/get?idTypeService=${idTypeService}`,
-			headers: authHeaders,
-		});
-		assertApiSuccess(statusCode, body, this.getNode());
-
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
-	}
-
 	if (operation === 'list') {
-		const numberOfRows = this.getNodeParameter('numberOfRows', i) as number;
-		const numberOfRowsSkipped = this.getNodeParameter('numberOfRowsSkipped', i) as number;
-		const pesquisa = this.getNodeParameter('pesquisa', i, '') as string;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const search = this.getNodeParameter('search', i, '') as string;
+		const updatedAfter = this.getNodeParameter('updatedAfter', i, '') as string;
+
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (updatedAfter) reqBody.atualizado_apos = updatedAfter;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/typeservice/list`,
+			url: `${baseUrl}/v2/tipos-servico/list`,
 			headers: authHeaders,
-			body: { numberOfRows, numberOfRowsSkipped, pesquisa },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

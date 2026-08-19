@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
+import { apiRequest, assertApiSuccess, toList, toNumArray } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -10,42 +10,72 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['group'] } },
 		options: [
-			{ name: 'Listar', value: 'list', description: 'Listar grupos com paginação', action: 'Listar grupos' },
+			{ name: 'Listar', value: 'list', description: 'Listar grupos', action: 'Listar grupos' },
 			{ name: 'Buscar', value: 'get', description: 'Buscar grupo pelo ID', action: 'Buscar grupo' },
 			{ name: 'Criar', value: 'post', description: 'Criar um novo grupo', action: 'Criar grupo' },
-			{ name: 'Editar', value: 'put', description: 'Editar um grupo existente', action: 'Editar grupo' },
+			{ name: 'Editar', value: 'put', description: 'Substituir um grupo existente', action: 'Editar grupo' },
+			{ name: 'Excluir', value: 'delete', description: 'Excluir um grupo', action: 'Excluir grupo' },
 		],
 		default: 'list',
 	},
+
+	// ── Listar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'Número de Registros',
-		name: 'groupNumberOfRows',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 50,
-		required: true,
+		default: 1,
 		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['group'], operation: ['list'] } },
-		description: 'Quantidade de registros a retornar (mínimo 1)',
+		description: 'Página a buscar (começa em 1)',
 	},
 	{
-		displayName: 'Registros a Pular',
-		name: 'groupNumberOfRowsSkipped',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 0,
-		required: true,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
 		displayOptions: { show: { resource: ['group'], operation: ['list'] } },
-		description: 'Quantidade de registros a pular (paginação)',
+		description: 'Itens por página (máximo 100)',
 	},
+	{
+		displayName: 'Busca',
+		name: 'search',
+		type: 'string',
+		default: '',
+		displayOptions: { show: { resource: ['group'], operation: ['list'] } },
+		description: 'Busca textual por nome ou palavra-chave',
+	},
+	{
+		displayName: 'IDs dos Usuários (separados por vírgula)',
+		name: 'groupFilterIdsUser',
+		type: 'string',
+		default: '',
+		displayOptions: { show: { resource: ['group'], operation: ['list'] } },
+		description: 'Filtrar grupos que contêm estes usuários. Ex: 1,2,3',
+		placeholder: '1,2,3',
+	},
+	{
+		displayName: 'Atualizado Após',
+		name: 'updatedAfter',
+		type: 'dateTime',
+		default: '',
+		displayOptions: { show: { resource: ['group'], operation: ['list'] } },
+		description: 'Sync incremental: retorna apenas registros atualizados após esta data',
+	},
+
+	// ── Buscar / Editar / Excluir ───────────────────────────────────────────────
 	{
 		displayName: 'ID do Grupo',
 		name: 'groupId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['group'], operation: ['get'] } },
-		description: 'ID do grupo a buscar',
+		displayOptions: { show: { resource: ['group'], operation: ['get', 'put', 'delete'] } },
+		description: 'ID do grupo',
 	},
+
+	// ── Criar / Editar ───────────────────────────────────────────────────────────
 	{
 		displayName: 'Nome',
 		name: 'groupName',
@@ -60,7 +90,6 @@ export const description: INodeProperties[] = [
 		name: 'groupIdsUser',
 		type: 'string',
 		default: '',
-		required: true,
 		displayOptions: { show: { resource: ['group'], operation: ['post', 'put'] } },
 		description: 'IDs dos usuários que fazem parte do grupo. Ex: 1,2,3',
 		placeholder: '1,2,3',
@@ -70,18 +99,8 @@ export const description: INodeProperties[] = [
 		name: 'groupIdOrigem',
 		type: 'number',
 		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['group'], operation: ['post'] } },
-		description: 'ID de origem do grupo',
-	},
-	{
-		displayName: 'ID do Grupo',
-		name: 'groupIdEdit',
-		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['group'], operation: ['put'] } },
-		description: 'ID do grupo a editar',
+		displayOptions: { show: { resource: ['group'], operation: ['post', 'put'] } },
+		description: 'ID de origem do grupo (opcional)',
 	},
 ];
 
@@ -94,69 +113,93 @@ export async function execute(
 	const operation = this.getNodeParameter('operation', i) as string;
 
 	if (operation === 'list') {
-		const numberOfRows = this.getNodeParameter('groupNumberOfRows', i) as number;
-		const numberOfRowsSkipped = this.getNodeParameter('groupNumberOfRowsSkipped', i) as number;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const search = this.getNodeParameter('search', i, '') as string;
+		const idsUserRaw = this.getNodeParameter('groupFilterIdsUser', i, '') as string;
+		const updatedAfter = this.getNodeParameter('updatedAfter', i, '') as string;
+
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (idsUserRaw.trim()) reqBody.ids_usuario = toNumArray(idsUserRaw);
+		if (updatedAfter) reqBody.atualizado_apos = updatedAfter;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/group/list`,
+			url: `${baseUrl}/v2/grupos/list`,
 			headers: authHeaders,
-			body: { numberOfRows, numberOfRowsSkipped },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	if (operation === 'get') {
-		const groupId = this.getNodeParameter('groupId', i) as number;
+		const id = this.getNodeParameter('groupId', i) as number;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'GET',
-			url: `${baseUrl}/api/v1/group/get?idGroup=${groupId}`,
+			url: `${baseUrl}/v2/grupos/${id}`,
 			headers: authHeaders,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'post') {
-		const name = this.getNodeParameter('groupName', i) as string;
-		const idsUserRaw = this.getNodeParameter('groupIdsUser', i) as string;
-		const idsUser = idsUserRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-		const idOrigem = this.getNodeParameter('groupIdOrigem', i) as number;
+		const nome = this.getNodeParameter('groupName', i) as string;
+		const idsUserRaw = this.getNodeParameter('groupIdsUser', i, '') as string;
+		const idOrigem = this.getNodeParameter('groupIdOrigem', i, 0) as number;
+
+		const reqBody: IDataObject = { nome };
+		if (idsUserRaw.trim()) reqBody.ids_usuarios = toNumArray(idsUserRaw);
+		if (idOrigem) reqBody.id_origem = idOrigem;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/group/post`,
+			url: `${baseUrl}/v2/grupos/post`,
 			headers: authHeaders,
-			body: { name, idsUser, idOrigem },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'put') {
-		const idGroup = this.getNodeParameter('groupIdEdit', i) as number;
-		const name = this.getNodeParameter('groupName', i) as string;
-		const idsUserRaw = this.getNodeParameter('groupIdsUser', i) as string;
-		const idsUser = idsUserRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+		const id = this.getNodeParameter('groupId', i) as number;
+		const nome = this.getNodeParameter('groupName', i) as string;
+		const idsUserRaw = this.getNodeParameter('groupIdsUser', i, '') as string;
+		const idOrigem = this.getNodeParameter('groupIdOrigem', i, 0) as number;
+
+		const reqBody: IDataObject = { nome };
+		if (idsUserRaw.trim()) reqBody.ids_usuarios = toNumArray(idsUserRaw);
+		if (idOrigem) reqBody.id_origem = idOrigem;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'PUT',
-			url: `${baseUrl}/api/v1/group/put`,
+			url: `${baseUrl}/v2/grupos/${id}`,
 			headers: authHeaders,
-			body: { idGroup, name, idsUser },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
+	}
+
+	if (operation === 'delete') {
+		const id = this.getNodeParameter('groupId', i) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'DELETE',
+			url: `${baseUrl}/v2/grupos/${id}`,
+			headers: authHeaders,
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ id, excluido: true }]);
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

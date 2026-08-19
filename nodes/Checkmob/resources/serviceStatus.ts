@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
+import { apiRequest, assertApiSuccess, toList } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -10,16 +10,43 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['serviceStatus'] } },
 		options: [
-			{ name: 'Listar', value: 'list', description: 'Listar status de serviço', action: 'Listar status de serviço' },
+			{ name: 'Listar', value: 'list', description: 'Listar status de serviço (registros)', action: 'Listar status de serviço' },
 		],
 		default: 'list',
 	},
 	{
-		displayName: 'Pesquisa',
-		name: 'ssSearch',
+		displayName: 'Página',
+		name: 'page',
+		type: 'number',
+		default: 1,
+		typeOptions: { minValue: 1 },
+		displayOptions: { show: { resource: ['serviceStatus'], operation: ['list'] } },
+		description: 'Página a buscar (começa em 1)',
+	},
+	{
+		displayName: 'Por Página',
+		name: 'perPage',
+		type: 'number',
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
+		displayOptions: { show: { resource: ['serviceStatus'], operation: ['list'] } },
+		description: 'Itens por página (máximo 100)',
+	},
+	{
+		displayName: 'Busca',
+		name: 'search',
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['serviceStatus'], operation: ['list'] } },
+		description: 'Busca textual por nome ou palavra-chave',
+	},
+	{
+		displayName: 'Atualizado Após',
+		name: 'updatedAfter',
+		type: 'dateTime',
+		default: '',
+		displayOptions: { show: { resource: ['serviceStatus'], operation: ['list'] } },
+		description: 'Sync incremental: retorna apenas registros atualizados após esta data',
 	},
 ];
 
@@ -32,18 +59,24 @@ export async function execute(
 	const operation = this.getNodeParameter('operation', i) as string;
 
 	if (operation === 'list') {
-		const search = this.getNodeParameter('ssSearch', i, '') as string;
-		const pesquisa = search.trim() ? `?pesquisa=${encodeURIComponent(search)}` : '';
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const search = this.getNodeParameter('search', i, '') as string;
+		const updatedAfter = this.getNodeParameter('updatedAfter', i, '') as string;
+
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (updatedAfter) reqBody.atualizado_apos = updatedAfter;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/servicestatus/list${pesquisa}`,
+			url: `${baseUrl}/v2/status-servico/list`,
 			headers: authHeaders,
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

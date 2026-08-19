@@ -16,20 +16,49 @@ export const description: INodeProperties[] = [
 	},
 	{
 		displayName: 'Origem',
-		name: 'cfOrigen',
-		type: 'string',
-		default: '',
+		name: 'cfOrigin',
+		type: 'options',
+		options: [
+			{ name: 'Clientes', value: 'clientes' },
+			{ name: 'Pessoas', value: 'pessoas' },
+		],
+		default: 'clientes',
 		displayOptions: { show: { resource: ['customField'], operation: ['list'] } },
-		description: 'Escreva "Clientes" ou "Pessoas" para retornar os campos da origem desejada',
-		placeholder: 'Clientes',
+		description: 'De qual cadastro listar os campos personalizados',
+	},
+	{
+		displayName: 'Página',
+		name: 'page',
+		type: 'number',
+		default: 1,
+		typeOptions: { minValue: 1 },
+		displayOptions: { show: { resource: ['customField'], operation: ['list'] } },
+		description: 'Página a buscar (começa em 1)',
+	},
+	{
+		displayName: 'Por Página',
+		name: 'perPage',
+		type: 'number',
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
+		displayOptions: { show: { resource: ['customField'], operation: ['list'] } },
+		description: 'Itens por página (máximo 100)',
 	},
 	{
 		displayName: 'Busca',
-		name: 'cfSearch',
+		name: 'search',
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['customField'], operation: ['list'] } },
-		description: 'Filtrar campos por nome ou palavra-chave',
+		description: 'Busca textual por nome ou palavra-chave',
+	},
+	{
+		displayName: 'Atualizado Após',
+		name: 'updatedAfter',
+		type: 'dateTime',
+		default: '',
+		displayOptions: { show: { resource: ['customField'], operation: ['list'] } },
+		description: 'Sync incremental: retorna apenas registros atualizados após esta data',
 	},
 ];
 
@@ -42,19 +71,25 @@ export async function execute(
 	const operation = this.getNodeParameter('operation', i) as string;
 
 	if (operation === 'list') {
-		const origen = this.getNodeParameter('cfOrigen', i, '') as string;
-		const search = this.getNodeParameter('cfSearch', i, '') as string;
+		const origin = this.getNodeParameter('cfOrigin', i, 'clientes') as string;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const search = this.getNodeParameter('search', i, '') as string;
+		const updatedAfter = this.getNodeParameter('updatedAfter', i, '') as string;
+
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (updatedAfter) reqBody.atualizado_apos = updatedAfter;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/customfields/list`,
+			url: `${baseUrl}/v2/campos-personalizados/${origin}/list`,
 			headers: authHeaders,
-			body: { origen, search },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(toList(data));
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);
