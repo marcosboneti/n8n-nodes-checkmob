@@ -108,6 +108,7 @@ export const description: INodeProperties[] = [
 		default: 0,
 		required: true,
 		displayOptions: { show: { resource: ['travel'], operation: ['listDays', 'listRoutes'] } },
+		description: 'Obrigatório. Informe o ID real de um usuário — a API rejeita 0 ou campo vazio.',
 	},
 
 	// ── Listar Percursos ──────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ export const description: INodeProperties[] = [
 		default: 0,
 		required: true,
 		displayOptions: { show: { resource: ['travel'], operation: ['listRoutes'] } },
+		description: 'Obrigatório. Informe o ID real de um dia de deslocamento (obtido em "Listar Dias") — a API rejeita 0 ou campo vazio.',
 	},
 ];
 
