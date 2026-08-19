@@ -6,7 +6,7 @@ Community node for **[Checkmob](https://checkmob.com)** — field service manage
 
 Handles JWT authentication automatically: the node logs in using your credentials and reuses the token until it expires.
 
-> **v1.0.0 — API v2 migration in progress.** This version connects to the Checkmob **API v2** (`/v2/...`), which is not backwards compatible with the old `/api/v1/...` endpoints. Only the **Categoria** resource has been migrated so far; the remaining resources will be added back incrementally in upcoming releases.
+> **v1.0.0 — migrated to Checkmob API v2.** This version connects to the Checkmob **API v2** (`/v2/...`), which is not backwards compatible with the old `/api/v1/...` endpoints used by previous releases.
 
 ---
 
@@ -36,8 +36,28 @@ The node connects to `https://api-integration.checkmob.com` and obtains the Bear
 | Resource | Operations |
 |---|---|
 | **Categoria** | Listar |
+| **Campo Personalizado** | Listar (Clientes/Pessoas) |
+| **Cliente** | Listar · Buscar · Criar · Criar em Lote · Substituir · Editar Parcialmente · Excluir · Vincular/Desvincular Pessoas |
+| **Deslocamento** | Resumo por Usuário · Listar Dias · Listar Percursos |
+| **Endereço do Cliente** | Listar · Substituir Principal |
+| **Endereço de Pessoa** | Buscar · Substituir |
+| **Etapa** | Listar |
+| **Grupo** | Listar · Buscar · Criar · Editar · Excluir |
+| **Nota do Cliente** | Listar · Criar · Editar · Excluir |
+| **Objetivo** | Listar |
+| **Ordem de Serviço** | Listar · Buscar · Criar · Substituir · Excluir · Excluir em Lote · Listar/Alterar Status |
+| **Pessoa** | Listar · Buscar · Criar · Editar · Excluir · Ativar/Inativar em Lote · Vincular/Desvincular Clientes |
+| **Questionário** | Listar · Buscar · Vincular/Remover Grupo · Vincular/Remover Segmento |
+| **Registro** | Listar · Buscar · Criar Agendado · Editar |
+| **Respostas de Questionário** | Buscar por Registro · Buscar por OS · Listar |
+| **Segmento** | Listar · Buscar · Criar · Editar · Excluir · Obter Vínculos · Vincular/Remover Cliente, Grupo, Usuário |
+| **Setor de Mercado** | Listar |
+| **Status de Serviço** | Listar |
+| **Temperatura** | Listar |
+| **Tipo de Serviço** | Listar |
+| **Usuário** | Listar · Buscar · Buscar Localização |
 
-Remaining resources (Cliente, Pessoa, Ordem de Serviço, Registro, Grupo, Segmento, Questionário, Usuário, and the other reference tables) are being migrated to API v2 and will return in upcoming releases.
+Note: some fields available in the old API v1 (e.g. setting a client's categoria/temperatura/etapa/valor de negócio at creation time) are read-only in API v2 — see the [Checkmob v2 docs](https://api-integration.checkmob.com/index.html) for the current capabilities of each resource.
 
 ---
 

@@ -1,10 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
-
-function toNumArray(raw: string): number[] {
-	return raw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-}
+import { apiRequest, assertApiSuccess, toList } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -15,32 +11,30 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['checklist'] } },
 		options: [
 			{ name: 'Listar', value: 'list', description: 'Listar questionários', action: 'Listar questionários' },
-			{ name: 'Vincular Grupo', value: 'linkGroup', description: 'Vincular grupos ao questionário', action: 'Vincular grupo ao questionário' },
-			{ name: 'Remover Vínculo de Grupo', value: 'deleteLinkGroup', description: 'Remover vínculo de grupos do questionário', action: 'Remover vínculo de grupo' },
-			{ name: 'Vincular Segmento', value: 'linkSegment', description: 'Vincular segmentos ao questionário', action: 'Vincular segmento ao questionário' },
-			{ name: 'Remover Vínculo de Segmento', value: 'deleteLinkSegment', description: 'Remover vínculo de segmentos do questionário', action: 'Remover vínculo de segmento' },
+			{ name: 'Buscar', value: 'get', description: 'Buscar um questionário pelo ID', action: 'Buscar questionário' },
+			{ name: 'Vincular Grupo', value: 'linkGroup', description: 'Vincular um grupo ao questionário', action: 'Vincular grupo ao questionário' },
+			{ name: 'Remover Vínculo de Grupo', value: 'deleteLinkGroup', description: 'Desvincular um grupo do questionário', action: 'Remover vínculo de grupo' },
+			{ name: 'Vincular Segmento', value: 'linkSegment', description: 'Vincular um segmento ao questionário', action: 'Vincular segmento ao questionário' },
+			{ name: 'Remover Vínculo de Segmento', value: 'deleteLinkSegment', description: 'Desvincular um segmento do questionário', action: 'Remover vínculo de segmento' },
 		],
 		default: 'list',
 	},
 
 	// ── Listar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'Número de Registros',
-		name: 'clNumberOfRows',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 50,
-		required: true,
+		default: 1,
 		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['checklist'], operation: ['list'] } },
-		description: 'Quantidade de registros a retornar (mínimo 1)',
 	},
 	{
-		displayName: 'Registros a Pular',
-		name: 'clNumberOfRowsSkipped',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 0,
-		required: true,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
 		displayOptions: { show: { resource: ['checklist'], operation: ['list'] } },
 	},
 	{
@@ -62,6 +56,24 @@ export const description: INodeProperties[] = [
 		default: 'all',
 		displayOptions: { show: { resource: ['checklist'], operation: ['list'] } },
 	},
+	{
+		displayName: 'Vigente Em',
+		name: 'clVigenteEm',
+		type: 'dateTime',
+		default: '',
+		displayOptions: { show: { resource: ['checklist'], operation: ['list'] } },
+		description: 'Retorna apenas questionários vigentes na data informada',
+	},
+
+	// ── Buscar ───────────────────────────────────────────────────────────────────
+	{
+		displayName: 'ID do Questionário',
+		name: 'clGetId',
+		type: 'number',
+		default: 0,
+		required: true,
+		displayOptions: { show: { resource: ['checklist'], operation: ['get'] } },
+	},
 
 	// ── Vincular / Remover Grupo e Segmento ──────────────────────────────────────
 	{
@@ -71,17 +83,22 @@ export const description: INodeProperties[] = [
 		default: 0,
 		required: true,
 		displayOptions: { show: { resource: ['checklist'], operation: ['linkGroup', 'deleteLinkGroup', 'linkSegment', 'deleteLinkSegment'] } },
-		description: 'ID do questionário',
 	},
 	{
-		displayName: 'IDs Vinculados (separados por vírgula)',
-		name: 'clIdsLinked',
-		type: 'string',
-		default: '',
+		displayName: 'ID do Grupo',
+		name: 'clIdGroup',
+		type: 'number',
+		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['checklist'], operation: ['linkGroup', 'deleteLinkGroup', 'linkSegment', 'deleteLinkSegment'] } },
-		description: 'IDs dos grupos ou segmentos. Ex: 1,2,3',
-		placeholder: '1,2,3',
+		displayOptions: { show: { resource: ['checklist'], operation: ['linkGroup', 'deleteLinkGroup'] } },
+	},
+	{
+		displayName: 'ID do Segmento',
+		name: 'clIdSegment',
+		type: 'number',
+		default: 0,
+		required: true,
+		displayOptions: { show: { resource: ['checklist'], operation: ['linkSegment', 'deleteLinkSegment'] } },
 	},
 ];
 
@@ -94,48 +111,97 @@ export async function execute(
 	const operation = this.getNodeParameter('operation', i) as string;
 
 	if (operation === 'list') {
-		const numberOfRows = this.getNodeParameter('clNumberOfRows', i) as number;
-		const numberOfRowsSkipped = this.getNodeParameter('clNumberOfRowsSkipped', i) as number;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
 		const search = this.getNodeParameter('clSearch', i, '') as string;
 		const activeParam = this.getNodeParameter('clActive', i, 'all') as string;
+		const vigenteEm = this.getNodeParameter('clVigenteEm', i, '') as string;
 
-		const reqBody: IDataObject = { numberOfRows, numberOfRowsSkipped, search };
-		if (activeParam !== 'all') reqBody.active = activeParam === 'true';
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (activeParam !== 'all') reqBody.ativo = activeParam === 'true';
+		if (vigenteEm) reqBody.vigente_em = vigenteEm;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/checklist/list`,
+			url: `${baseUrl}/v2/questionarios/list`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
-	const linkOperations: Record<string, { method: string; path: string }> = {
-		linkGroup:         { method: 'POST',   path: 'linkgroup' },
-		deleteLinkGroup:   { method: 'DELETE', path: 'deletelinkgroup' },
-		linkSegment:       { method: 'POST',   path: 'linksegment' },
-		deleteLinkSegment: { method: 'DELETE', path: 'deletelinksegment' },
-	};
-
-	if (linkOperations[operation]) {
-		const { method, path } = linkOperations[operation];
-		const id = this.getNodeParameter('clId', i) as number;
-		const idsLinked = toNumArray(this.getNodeParameter('clIdsLinked', i) as string);
+	if (operation === 'get') {
+		const id = this.getNodeParameter('clGetId', i) as number;
 
 		const { statusCode, body } = await apiRequest.call(this, {
-			method,
-			url: `${baseUrl}/api/v1/checklist/${path}`,
+			method: 'GET',
+			url: `${baseUrl}/v2/questionarios/${id}`,
 			headers: authHeaders,
-			body: { id, idsLinked } as IDataObject,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
+	}
+
+	if (operation === 'linkGroup') {
+		const id = this.getNodeParameter('clId', i) as number;
+		const idGrupo = this.getNodeParameter('clIdGroup', i) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'POST',
+			url: `${baseUrl}/v2/questionarios/${id}/grupos`,
+			headers: authHeaders,
+			body: { id_grupo: idGrupo },
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ id, idGrupo, vinculado: true }]);
+	}
+
+	if (operation === 'deleteLinkGroup') {
+		const id = this.getNodeParameter('clId', i) as number;
+		const idGrupo = this.getNodeParameter('clIdGroup', i) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'DELETE',
+			url: `${baseUrl}/v2/questionarios/${id}/grupos/${idGrupo}`,
+			headers: authHeaders,
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ id, idGrupo, desvinculado: true }]);
+	}
+
+	if (operation === 'linkSegment') {
+		const id = this.getNodeParameter('clId', i) as number;
+		const idSegmento = this.getNodeParameter('clIdSegment', i) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'POST',
+			url: `${baseUrl}/v2/questionarios/${id}/segmentos`,
+			headers: authHeaders,
+			body: { id_segmento: idSegmento },
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ id, idSegmento, vinculado: true }]);
+	}
+
+	if (operation === 'deleteLinkSegment') {
+		const id = this.getNodeParameter('clId', i) as number;
+		const idSegmento = this.getNodeParameter('clIdSegment', i) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'DELETE',
+			url: `${baseUrl}/v2/questionarios/${id}/segmentos/${idSegmento}`,
+			headers: authHeaders,
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ id, idSegmento, desvinculado: true }]);
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

@@ -21,18 +21,17 @@ import * as marketSector from './resources/marketSector';
 import * as objective from './resources/objective';
 import * as group from './resources/group';
 import * as segment from './resources/segment';
-
-// TODO: migrar os recursos abaixo para a API v2 e reativar aqui.
-// import * as client from './resources/client';
-// import * as addressClient from './resources/addressClient';
-// import * as addressPerson from './resources/addressPerson';
-// import * as user from './resources/user';
-// import * as noteClient from './resources/noteClient';
-// import * as serviceOrder from './resources/serviceOrder';
-// import * as person from './resources/person';
-// import * as service from './resources/service';
-// import * as checklist from './resources/checklist';
-// import * as answerChecklist from './resources/answerChecklist';
+import * as client from './resources/client';
+import * as person from './resources/person';
+import * as addressClient from './resources/addressClient';
+import * as addressPerson from './resources/addressPerson';
+import * as user from './resources/user';
+import * as noteClient from './resources/noteClient';
+import * as serviceOrder from './resources/serviceOrder';
+import * as service from './resources/service';
+import * as checklist from './resources/checklist';
+import * as answerChecklist from './resources/answerChecklist';
+import * as travel from './resources/travel';
 
 interface ResourceModule {
 	description: INodeProperties[];
@@ -55,6 +54,17 @@ const resources: Record<string, ResourceModule> = {
 	objective,
 	group,
 	segment,
+	client,
+	person,
+	addressClient,
+	addressPerson,
+	user,
+	noteClient,
+	serviceOrder,
+	service,
+	checklist,
+	answerChecklist,
+	travel,
 };
 
 const resourceSelector: INodeProperties = {
@@ -65,14 +75,25 @@ const resourceSelector: INodeProperties = {
 	options: [
 		{ name: 'Categoria', value: 'category', description: 'Listar categorias' },
 		{ name: 'Campo Personalizado', value: 'customField', description: 'Listar campos personalizados' },
+		{ name: 'Cliente', value: 'client', description: 'Gerenciar clientes' },
+		{ name: 'Endereço do Cliente', value: 'addressClient', description: 'Listar e substituir endereço do cliente' },
+		{ name: 'Endereço de Pessoa', value: 'addressPerson', description: 'Buscar e substituir endereço de pessoa' },
 		{ name: 'Etapa', value: 'step', description: 'Listar etapas' },
 		{ name: 'Grupo', value: 'group', description: 'Gerenciar grupos' },
+		{ name: 'Nota do Cliente', value: 'noteClient', description: 'Gerenciar notas do cliente' },
 		{ name: 'Objetivo', value: 'objective', description: 'Listar objetivos' },
+		{ name: 'Ordem de Serviço', value: 'serviceOrder', description: 'Gerenciar ordens de serviço' },
+		{ name: 'Pessoa', value: 'person', description: 'Gerenciar pessoas' },
+		{ name: 'Questionário', value: 'checklist', description: 'Consultar questionários e gerenciar vínculos' },
+		{ name: 'Registro', value: 'service', description: 'Gerenciar registros (visitas)' },
+		{ name: 'Respostas de Questionário', value: 'answerChecklist', description: 'Consultar respostas de questionários' },
 		{ name: 'Segmento', value: 'segment', description: 'Gerenciar segmentos' },
 		{ name: 'Setor de Mercado', value: 'marketSector', description: 'Listar setores de mercado' },
 		{ name: 'Status de Serviço', value: 'serviceStatus', description: 'Listar status de serviço' },
 		{ name: 'Temperatura', value: 'temperature', description: 'Listar temperaturas' },
 		{ name: 'Tipo de Serviço', value: 'typeService', description: 'Listar tipos de serviço' },
+		{ name: 'Deslocamento', value: 'travel', description: 'Consultar quilometragem, custo e aprovação de deslocamentos' },
+		{ name: 'Usuário', value: 'user', description: 'Listar usuários e localização' },
 	],
 	default: 'category',
 };
@@ -117,6 +138,17 @@ export class Checkmob implements INodeType {
 			...objective.description,
 			...group.description,
 			...segment.description,
+			...client.description,
+			...person.description,
+			...addressClient.description,
+			...addressPerson.description,
+			...user.description,
+			...noteClient.description,
+			...serviceOrder.description,
+			...service.description,
+			...checklist.description,
+			...answerChecklist.description,
+			...travel.description,
 		],
 	};
 

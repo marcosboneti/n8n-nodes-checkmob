@@ -10,31 +10,21 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['addressPerson'] } },
 		options: [
-			{ name: 'Buscar', value: 'get', description: 'Buscar endereço da pessoa pelo ID do contato', action: 'Buscar endereço de pessoa' },
-			{ name: 'Editar', value: 'put', description: 'Editar endereço da pessoa', action: 'Editar endereço de pessoa' },
+			{ name: 'Buscar', value: 'get', description: 'Buscar o endereço da pessoa', action: 'Buscar endereço de pessoa' },
+			{ name: 'Substituir', value: 'put', description: 'Substituir o endereço da pessoa', action: 'Substituir endereço de pessoa' },
 		],
 		default: 'get',
 	},
 	{
-		displayName: 'ID do Contato',
+		displayName: 'ID da Pessoa',
 		name: 'addrPersonId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['addressPerson'], operation: ['get'] } },
-		description: 'ID do contato para buscar o endereço',
+		displayOptions: { show: { resource: ['addressPerson'], operation: ['get', 'put'] } },
 	},
 	{
-		displayName: 'ID do Contato',
-		name: 'addrPersonId',
-		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
-		description: 'ID do contato cujo endereço será editado',
-	},
-	{
-		displayName: 'Título (Logradouro)',
+		displayName: 'Título',
 		name: 'addrTitle',
 		type: 'string',
 		default: '',
@@ -69,20 +59,6 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
 	},
 	{
-		displayName: 'Latitude',
-		name: 'addrLatitude',
-		type: 'number',
-		default: 0,
-		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
-	},
-	{
-		displayName: 'Longitude',
-		name: 'addrLongitude',
-		type: 'number',
-		default: 0,
-		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
-	},
-	{
 		displayName: 'ID da Cidade',
 		name: 'addrIdCity',
 		type: 'number',
@@ -97,8 +73,15 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
 	},
 	{
-		displayName: 'ID do País',
-		name: 'addrIdCountry',
+		displayName: 'Latitude',
+		name: 'addrLatitude',
+		type: 'number',
+		default: 0,
+		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
+	},
+	{
+		displayName: 'Longitude',
+		name: 'addrLongitude',
 		type: 'number',
 		default: 0,
 		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
@@ -118,41 +101,37 @@ export async function execute(
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'GET',
-			url: `${baseUrl}/api/v1/addressperson/get?idContact=${addrPersonId}`,
+			url: `${baseUrl}/v2/pessoas/${addrPersonId}/endereco`,
 			headers: authHeaders,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'put') {
 		const addrPersonId = this.getNodeParameter('addrPersonId', i) as number;
 		const reqBody: IDataObject = {
-			idContact: addrPersonId,
-			title: this.getNodeParameter('addrTitle', i, '') as string,
-			number: this.getNodeParameter('addrNumber', i, '') as string,
-			complement: this.getNodeParameter('addrComplement', i, '') as string,
-			neighborhood: this.getNodeParameter('addrNeighborhood', i, '') as string,
-			zipCode: this.getNodeParameter('addrZipCode', i, '') as string,
+			titulo: this.getNodeParameter('addrTitle', i, '') as string,
+			numero: this.getNodeParameter('addrNumber', i, '') as string,
+			complemento: this.getNodeParameter('addrComplement', i, '') as string,
+			bairro: this.getNodeParameter('addrNeighborhood', i, '') as string,
+			cep: this.getNodeParameter('addrZipCode', i, '') as string,
+			id_cidade: this.getNodeParameter('addrIdCity', i, 0) as number,
+			id_estado: this.getNodeParameter('addrIdState', i, 0) as number,
 			latitude: this.getNodeParameter('addrLatitude', i, 0) as number,
 			longitude: this.getNodeParameter('addrLongitude', i, 0) as number,
-			idCity: this.getNodeParameter('addrIdCity', i, 0) as number,
-			idState: this.getNodeParameter('addrIdState', i, 0) as number,
-			idCountry: this.getNodeParameter('addrIdCountry', i, 0) as number,
 		};
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'PUT',
-			url: `${baseUrl}/api/v1/addressperson/put`,
+			url: `${baseUrl}/v2/pessoas/${addrPersonId}/endereco`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

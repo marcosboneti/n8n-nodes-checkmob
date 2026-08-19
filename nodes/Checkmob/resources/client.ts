@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess, toList, parseJson } from '../transport';
+import { apiRequest, assertApiSuccess, toList, toNumArray, parseJson } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -13,38 +13,42 @@ export const description: INodeProperties[] = [
 			{ name: 'Listar', value: 'list', description: 'Buscar clientes de forma paginada e com filtros', action: 'Listar clientes' },
 			{ name: 'Buscar', value: 'get', description: 'Buscar um cliente pelo ID', action: 'Buscar cliente' },
 			{ name: 'Criar', value: 'post', description: 'Criar um novo cliente', action: 'Criar cliente' },
-			{ name: 'Criar em Lote', value: 'postBulk', description: 'Criar múltiplos clientes em uma única chamada', action: 'Criar clientes em lote' },
-			{ name: 'Editar', value: 'put', description: 'Editar um cliente existente', action: 'Editar cliente' },
+			{ name: 'Criar em Lote', value: 'postBulk', description: 'Criar múltiplos clientes em uma única chamada (máx. 500)', action: 'Criar clientes em lote' },
+			{ name: 'Substituir', value: 'put', description: 'Substituir um cliente existente', action: 'Substituir cliente' },
+			{ name: 'Editar Parcialmente', value: 'patch', description: 'Atualizar parcialmente um cliente existente', action: 'Editar cliente parcialmente' },
+			{ name: 'Excluir', value: 'delete', description: 'Excluir um cliente', action: 'Excluir cliente' },
+			{ name: 'Vincular Pessoas', value: 'linkPeople', description: 'Vincular uma ou mais pessoas ao cliente (máx. 500)', action: 'Vincular pessoas ao cliente' },
+			{ name: 'Desvincular Pessoas', value: 'unlinkPeople', description: 'Desfazer vínculo entre cliente e pessoas (máx. 500)', action: 'Desvincular pessoas do cliente' },
 		],
 		default: 'list',
 	},
 
 	// ── Listar ──────────────────────────────────────────────────────────────────
 	{
-		displayName: 'Número de Linhas',
-		name: 'clientNumberOfRows',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 50,
-		typeOptions: { minValue: 0 },
+		default: 1,
+		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['client'], operation: ['list'] } },
-		description: 'Quantidade de registros a retornar (0 = todos)',
+		description: 'Página a buscar (começa em 1)',
 	},
 	{
-		displayName: 'Pular',
-		name: 'clientSkip',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 0,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
 		displayOptions: { show: { resource: ['client'], operation: ['list'] } },
-		description: 'Número de registros a pular (paginação)',
+		description: 'Itens por página (máximo 100)',
 	},
 	{
 		displayName: 'Busca',
-		name: 'clientSearch',
+		name: 'search',
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['client'], operation: ['list'] } },
-		description: 'Filtrar clientes por nome ou palavra-chave',
+		description: 'Busca textual por nome, código ou documento',
 	},
 	{
 		displayName: 'Ativo',
@@ -57,47 +61,51 @@ export const description: INodeProperties[] = [
 		],
 		default: 'all',
 		displayOptions: { show: { resource: ['client'], operation: ['list'] } },
-		description: 'Filtrar por status ativo/inativo',
 	},
 	{
-		displayName: 'IDs (separados por vírgula)',
-		name: 'clientIds',
-		type: 'string',
-		default: '',
+		displayName: 'Filtros Adicionais',
+		name: 'clientListFilters',
+		type: 'collection',
+		placeholder: 'Adicionar filtro',
+		default: {},
 		displayOptions: { show: { resource: ['client'], operation: ['list'] } },
-		description: 'Filtrar por IDs específicos. Ex: 1,2,3',
-		placeholder: '1,2,3',
-	},
-	{
-		displayName: 'Códigos (separados por vírgula)',
-		name: 'clientCodes',
-		type: 'string',
-		default: '',
-		displayOptions: { show: { resource: ['client'], operation: ['list'] } },
-		description: 'Filtrar por códigos específicos. Ex: A001,A002',
-		placeholder: 'A001,A002',
+		options: [
+			{ displayName: 'IDs (separados por vírgula)', name: 'ids', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'Códigos (separados por vírgula)', name: 'codigos', type: 'string', default: '', placeholder: 'A001,A002' },
+			{ displayName: 'Documento', name: 'documento', type: 'string', default: '' },
+			{ displayName: 'IDs de Segmento (separados por vírgula)', name: 'ids_segmento', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs de Categoria (separados por vírgula)', name: 'ids_categoria', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs de Temperatura (separados por vírgula)', name: 'ids_temperatura', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs de Setor de Mercado (separados por vírgula)', name: 'ids_setor_mercado', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs de Etapa (separados por vírgula)', name: 'ids_etapa', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'Criado Após', name: 'data_criacao_apos', type: 'dateTime', default: '' },
+			{ displayName: 'Criado Antes', name: 'data_criacao_antes', type: 'dateTime', default: '' },
+			{ displayName: 'Atualizado Após', name: 'atualizado_apos', type: 'dateTime', default: '', description: 'Sync incremental' },
+		],
 	},
 
-	// ── Buscar ───────────────────────────────────────────────────────────────────
+	// ── Buscar / Substituir / Editar Parcialmente / Excluir ─────────────────────
 	{
 		displayName: 'ID do Cliente',
 		name: 'clientId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['client'], operation: ['get'] } },
-		description: 'ID do cliente a buscar',
+		displayOptions: { show: { resource: ['client'], operation: ['get', 'put', 'patch', 'delete'] } },
 	},
 
-	// ── Criar / Editar ───────────────────────────────────────────────────────────
+	// ── Criar / Substituir / Editar Parcialmente ────────────────────────────────
 	{
-		displayName: 'ID do Cliente',
-		name: 'clientId',
-		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['client'], operation: ['put'] } },
-		description: 'ID do cliente a editar',
+		displayName: 'Tipo',
+		name: 'clientTipo',
+		type: 'options',
+		options: [
+			{ name: 'Física', value: 'F' },
+			{ name: 'Jurídica', value: 'J' },
+			{ name: 'Estrangeiro', value: 'N' },
+		],
+		default: 'J',
+		displayOptions: { show: { resource: ['client'], operation: ['post', 'put'] } },
 	},
 	{
 		displayName: 'Nome',
@@ -105,78 +113,46 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		displayOptions: { show: { resource: ['client'], operation: ['post'] } },
-		description: 'Nome do cliente',
+		displayOptions: { show: { resource: ['client'], operation: ['post', 'put'] } },
 	},
 	{
-		displayName: 'Campos Adicionais',
-		name: 'additionalFields',
+		displayName: 'Documento',
+		name: 'clientDocumento',
+		type: 'string',
+		default: '',
+		displayOptions: { show: { resource: ['client'], operation: ['post', 'put'] } },
+		description: 'CPF, CNPJ ou documento estrangeiro',
+	},
+	{
+		displayName: 'Ativo',
+		name: 'clientAtivo',
+		type: 'boolean',
+		default: true,
+		displayOptions: { show: { resource: ['client'], operation: ['post', 'put'] } },
+	},
+	{
+		displayName: 'Campos a Atualizar',
+		name: 'clientPatchFields',
 		type: 'collection',
 		placeholder: 'Adicionar campo',
 		default: {},
-		displayOptions: { show: { resource: ['client'], operation: ['post', 'put'] } },
-		options: [
-			//{ displayName: 'Nome', name: 'name', type: 'string', default: '', description: 'Nome do cliente (obrigatório no PUT)' },
-			{ displayName: 'Código', name: 'code', type: 'number', default: 0 },
-			{ displayName: 'Tipo', name: 'type', type: 'string', default: '' },
-			{ displayName: 'CNPJ', name: 'cnpj', type: 'string', default: '' },
-			{ displayName: 'CPF', name: 'cpf', type: 'string', default: '' },
-			{ displayName: 'E-mail', name: 'email', type: 'string', default: '' },
-			{ displayName: 'Telefone', name: 'phone', type: 'string', default: '' },
-			{ displayName: 'Celular', name: 'cellphone', type: 'string', default: '' },
-			{ displayName: 'Cargo', name: 'role', type: 'string', default: '' },
-			{ displayName: 'Responsável', name: 'responsible', type: 'string', default: '' },
-			{ displayName: 'Telefone Responsável', name: 'responsiblePhone', type: 'string', default: '' },
-			{ displayName: 'E-mail Responsável', name: 'responsibleEmail', type: 'string', default: '' },
-			{ displayName: 'Cargo Responsável', name: 'responsibleRole', type: 'string', default: '' },
-			{ displayName: 'Telefone Secundário', name: 'secondaryPhone', type: 'string', default: '' },
-			{ displayName: 'Info Adicional', name: 'additionalInfo', type: 'string', default: '' },
-			{ displayName: 'QR Code', name: 'qrCode', type: 'string', default: '' },
-			{ displayName: 'Ativo', name: 'active', type: 'boolean', default: true },
-			{ displayName: 'Range de Checkin', name: 'checkinRange', type: 'number', default: 0 },
-			{ displayName: 'ID Etapa', name: 'idStep', type: 'number', default: 0 },
-			{ displayName: 'Valor Negócio', name: 'businessValue', type: 'number', default: 0 },
-			{ displayName: 'ID Categoria', name: 'idCategory', type: 'number', default: 0 },
-			{ displayName: 'ID Temperatura', name: 'idTemperature', type: 'number', default: 0 },
-			{ displayName: 'ID Setor Mercado', name: 'idMarketSector', type: 'number', default: 0 },
-			{ displayName: 'CNPJ/CPF Fiscal', name: 'fiscalIdentifier', type: 'string', default: '' },
-		],
-	},
-	{
-		displayName: 'Endereço',
-		name: 'address',
-		type: 'fixedCollection',
-		typeOptions: { multipleValues: false },
-		placeholder: 'Adicionar endereço',
-		default: {},
-		displayOptions: { show: { resource: ['client'], operation: ['post', 'put'] } },
+		displayOptions: { show: { resource: ['client'], operation: ['patch'] } },
 		options: [
 			{
-				name: 'values',
-				displayName: 'Endereço',
-				values: [
-					{ displayName: 'Logradouro', name: 'address', type: 'string', default: '' },
-					{ displayName: 'Número', name: 'number', type: 'string', default: '' },
-					{ displayName: 'Complemento', name: 'complement', type: 'string', default: '' },
-					{ displayName: 'Bairro', name: 'neighborhood', type: 'string', default: '' },
-					{ displayName: 'CEP', name: 'zipCode', type: 'string', default: '' },
-					{ displayName: 'Cidade', name: 'city', type: 'string', default: '' },
-					{ displayName: 'Estado', name: 'state', type: 'string', default: '' },
-					{ displayName: 'País', name: 'country', type: 'string', default: '' },
-					{ displayName: 'Latitude', name: 'latitude', type: 'number', default: 0 },
-					{ displayName: 'Longitude', name: 'longitude', type: 'number', default: 0 },
+				displayName: 'Tipo',
+				name: 'tipo',
+				type: 'options',
+				options: [
+					{ name: 'Física', value: 'F' },
+					{ name: 'Jurídica', value: 'J' },
+					{ name: 'Estrangeiro', value: 'N' },
 				],
+				default: 'J',
 			},
+			{ displayName: 'Nome', name: 'nome', type: 'string', default: '' },
+			{ displayName: 'Documento', name: 'documento', type: 'string', default: '' },
+			{ displayName: 'Ativo', name: 'ativo', type: 'boolean', default: true },
 		],
-	},
-	{
-		displayName: 'Campos Personalizados (JSON)',
-		name: 'clientFields',
-		type: 'string',
-		typeOptions: { rows: 4 },
-		default: '[]',
-		displayOptions: { show: { resource: ['client'], operation: ['post', 'put'] } },
-		description: 'Array JSON com campos personalizados. Ex: [{"idField":1,"idFieldOption":0,"value":"texto"}]',
 	},
 
 	// ── Criar em Lote ────────────────────────────────────────────────────────────
@@ -188,7 +164,27 @@ export const description: INodeProperties[] = [
 		default: '[]',
 		required: true,
 		displayOptions: { show: { resource: ['client'], operation: ['postBulk'] } },
-		description: 'Array JSON com os clientes a criar. Mesma estrutura do endpoint Criar.',
+		description: 'Array JSON com até 500 clientes a criar. Ex: [{"tipo":"J","nome":"Empresa","documento":"123","ativo":true}]',
+	},
+
+	// ── Vincular / Desvincular Pessoas ───────────────────────────────────────────
+	{
+		displayName: 'ID do Cliente',
+		name: 'clientLinkId',
+		type: 'number',
+		default: 0,
+		required: true,
+		displayOptions: { show: { resource: ['client'], operation: ['linkPeople', 'unlinkPeople'] } },
+	},
+	{
+		displayName: 'IDs das Pessoas (separados por vírgula)',
+		name: 'clientLinkPeopleIds',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: { show: { resource: ['client'], operation: ['linkPeople', 'unlinkPeople'] } },
+		description: 'Máximo 500 por chamada. Ex: 1,2,3',
+		placeholder: '1,2,3',
 	},
 ];
 
@@ -201,28 +197,38 @@ export async function execute(
 	const operation = this.getNodeParameter('operation', i) as string;
 
 	if (operation === 'list') {
-		const numberOfRows = this.getNodeParameter('clientNumberOfRows', i, 50) as number;
-		const numberOfSkipped = this.getNodeParameter('clientSkip', i, 0) as number;
-		const search = this.getNodeParameter('clientSearch', i, '') as string;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const search = this.getNodeParameter('search', i, '') as string;
 		const activeParam = this.getNodeParameter('clientActive', i, 'all') as string;
-		const idsRaw = this.getNodeParameter('clientIds', i, '') as string;
-		const codesRaw = this.getNodeParameter('clientCodes', i, '') as string;
+		const filters = this.getNodeParameter('clientListFilters', i, {}) as IDataObject;
 
-		const reqBody: IDataObject = { numberOfRows, numberOfRowsSkipped: numberOfSkipped, search };
-		if (activeParam !== 'all') reqBody.active = activeParam === 'true';
-		if (idsRaw.trim()) reqBody.ids = idsRaw.split(',').map((v) => Number(v.trim())).filter(Boolean);
-		if (codesRaw.trim()) reqBody.code = codesRaw.split(',').map((v) => v.trim()).filter(Boolean);
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (activeParam !== 'all') reqBody.ativo = activeParam === 'true';
+
+		if (typeof filters.ids === 'string' && filters.ids.trim()) reqBody.ids = toNumArray(filters.ids);
+		if (typeof filters.codigos === 'string' && filters.codigos.trim()) {
+			reqBody.codigos = filters.codigos.split(',').map((v) => v.trim()).filter(Boolean);
+		}
+		if (typeof filters.documento === 'string' && filters.documento.trim()) reqBody.documento = filters.documento;
+		for (const key of ['ids_segmento', 'ids_categoria', 'ids_temperatura', 'ids_setor_mercado', 'ids_etapa']) {
+			const raw = filters[key];
+			if (typeof raw === 'string' && raw.trim()) reqBody[key] = toNumArray(raw);
+		}
+		if (filters.data_criacao_apos) reqBody.data_criacao_apos = filters.data_criacao_apos;
+		if (filters.data_criacao_antes) reqBody.data_criacao_antes = filters.data_criacao_antes;
+		if (filters.atualizado_apos) reqBody.atualizado_apos = filters.atualizado_apos;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/client/list`,
+			url: `${baseUrl}/v2/clientes/list`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(toList(data));
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	if (operation === 'get') {
@@ -230,73 +236,113 @@ export async function execute(
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'GET',
-			url: `${baseUrl}/api/v1/client/get?id=${id}`,
+			url: `${baseUrl}/v2/clientes/${id}`,
 			headers: authHeaders,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'post') {
-		const name = this.getNodeParameter('clientName', i) as string;
-		const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-		const addressData = (this.getNodeParameter('address', i, {}) as IDataObject).values as IDataObject | undefined;
-		const fieldsRaw = this.getNodeParameter('clientFields', i, '[]') as string;
+		const tipo = this.getNodeParameter('clientTipo', i) as string;
+		const nome = this.getNodeParameter('clientName', i) as string;
+		const documento = this.getNodeParameter('clientDocumento', i, '') as string;
+		const ativo = this.getNodeParameter('clientAtivo', i, true) as boolean;
 
-		const reqBody: IDataObject = { name, ...additionalFields };
-		if (addressData && Object.keys(addressData).length) reqBody.address = addressData;
-		reqBody.fields = parseJson(fieldsRaw, this.getNode(), 'Campos Personalizados');
+		const reqBody: IDataObject = { tipo, nome, ativo };
+		if (documento) reqBody.documento = documento;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/client/post`,
+			url: `${baseUrl}/v2/clientes`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'postBulk') {
 		const clientsRaw = this.getNodeParameter('clientsBulkJson', i, '[]') as string;
-		const clients = parseJson(clientsRaw, this.getNode(), 'Clientes (JSON)');
+		const clientes = parseJson(clientsRaw, this.getNode(), 'Clientes (JSON)');
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/client/postbulk`,
+			url: `${baseUrl}/v2/clientes/criar-lote`,
 			headers: authHeaders,
-			body: { clients },
+			body: { clientes },
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		const resultados = (body as IDataObject)?.resultados;
+		return this.helpers.returnJsonArray(Array.isArray(resultados) ? (resultados as IDataObject[]) : [body as IDataObject]);
 	}
 
 	if (operation === 'put') {
 		const id = this.getNodeParameter('clientId', i) as number;
-		const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-		const addressData = (this.getNodeParameter('address', i, {}) as IDataObject).values as IDataObject | undefined;
-		const fieldsRaw = this.getNodeParameter('clientFields', i, '[]') as string;
+		const tipo = this.getNodeParameter('clientTipo', i) as string;
+		const nome = this.getNodeParameter('clientName', i) as string;
+		const documento = this.getNodeParameter('clientDocumento', i, '') as string;
+		const ativo = this.getNodeParameter('clientAtivo', i, true) as boolean;
 
-		const reqBody: IDataObject = { id, ...additionalFields };
-		if (addressData && Object.keys(addressData).length) reqBody.address = addressData;
-		reqBody.fields = parseJson(fieldsRaw, this.getNode(), 'Campos Personalizados');
+		const reqBody: IDataObject = { tipo, nome, ativo };
+		if (documento) reqBody.documento = documento;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'PUT',
-			url: `${baseUrl}/api/v1/client/put`,
+			url: `${baseUrl}/v2/clientes/${id}`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
+	}
+
+	if (operation === 'patch') {
+		const id = this.getNodeParameter('clientId', i) as number;
+		const fields = this.getNodeParameter('clientPatchFields', i, {}) as IDataObject;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'PATCH',
+			url: `${baseUrl}/v2/clientes/${id}`,
+			headers: authHeaders,
+			body: fields,
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([body as IDataObject]);
+	}
+
+	if (operation === 'delete') {
+		const id = this.getNodeParameter('clientId', i) as number;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'DELETE',
+			url: `${baseUrl}/v2/clientes/${id}`,
+			headers: authHeaders,
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ id, excluido: true }]);
+	}
+
+	if (operation === 'linkPeople' || operation === 'unlinkPeople') {
+		const idCliente = this.getNodeParameter('clientLinkId', i) as number;
+		const idsPessoas = toNumArray(this.getNodeParameter('clientLinkPeopleIds', i) as string);
+		const subPath = operation === 'linkPeople' ? 'vincular' : 'desvincular';
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'POST',
+			url: `${baseUrl}/v2/clientes/pessoas/${subPath}`,
+			headers: authHeaders,
+			body: { id_cliente: idCliente, ids_pessoas: idsPessoas },
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ idCliente, idsPessoas, sucesso: true }]);
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess, parseJson } from '../transport';
+import { apiRequest, assertApiSuccess, toList, toNumArray } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -10,54 +10,77 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['person'] } },
 		options: [
-			{ name: 'Listar', value: 'list', description: 'Listar pessoas com paginação', action: 'Listar pessoas' },
-			{ name: 'Buscar', value: 'get', description: 'Buscar pessoa pelo ID', action: 'Buscar pessoa' },
+			{ name: 'Listar', value: 'list', description: 'Listar pessoas/contatos', action: 'Listar pessoas' },
+			{ name: 'Buscar', value: 'get', description: 'Buscar uma pessoa pelo ID', action: 'Buscar pessoa' },
 			{ name: 'Criar', value: 'post', description: 'Criar uma nova pessoa', action: 'Criar pessoa' },
 			{ name: 'Editar', value: 'put', description: 'Editar uma pessoa existente', action: 'Editar pessoa' },
-			{ name: 'Excluir', value: 'delete', description: 'Excluir pessoas pelos IDs', action: 'Excluir pessoas' },
-			{ name: 'Vincular Cliente', value: 'linkClient', description: 'Vincular pessoa a um cliente', action: 'Vincular pessoa a cliente' },
+			{ name: 'Excluir', value: 'delete', description: 'Excluir uma pessoa', action: 'Excluir pessoa' },
+			{ name: 'Ativar/Inativar em Lote', value: 'status', description: 'Ativar ou inativar pessoas em lote (máx. 500)', action: 'Ativar ou inativar pessoas' },
+			{ name: 'Vincular Clientes', value: 'linkClients', description: 'Vincular uma pessoa a um ou mais clientes (máx. 500)', action: 'Vincular pessoa a clientes' },
+			{ name: 'Desvincular Clientes', value: 'unlinkClients', description: 'Desfazer vínculo entre pessoa e clientes (máx. 500)', action: 'Desvincular pessoa de clientes' },
 		],
 		default: 'list',
 	},
 
 	// ── Listar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'Número de Registros',
-		name: 'personNumberOfRows',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 50,
-		required: true,
+		default: 1,
 		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['person'], operation: ['list'] } },
-		description: 'Quantidade de registros a retornar (mínimo 1)',
 	},
 	{
-		displayName: 'Registros a Pular',
-		name: 'personNumberOfRowsSkipped',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 0,
-		required: true,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
 		displayOptions: { show: { resource: ['person'], operation: ['list'] } },
-		description: 'Quantidade de registros a pular (paginação)',
 	},
 	{
 		displayName: 'Busca',
-		name: 'personSearch',
+		name: 'search',
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['person'], operation: ['list'] } },
 	},
+	{
+		displayName: 'Ativo',
+		name: 'personActive',
+		type: 'options',
+		options: [
+			{ name: 'Todos', value: 'all' },
+			{ name: 'Ativo', value: 'true' },
+			{ name: 'Inativo', value: 'false' },
+		],
+		default: 'all',
+		displayOptions: { show: { resource: ['person'], operation: ['list'] } },
+	},
+	{
+		displayName: 'Filtros Adicionais',
+		name: 'personListFilters',
+		type: 'collection',
+		placeholder: 'Adicionar filtro',
+		default: {},
+		displayOptions: { show: { resource: ['person'], operation: ['list'] } },
+		options: [
+			{ displayName: 'E-mail', name: 'email', type: 'string', default: '' },
+			{ displayName: 'IDs (separados por vírgula)', name: 'ids', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs de Clientes (separados por vírgula)', name: 'ids_clientes', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'Atualizado Após', name: 'atualizado_apos', type: 'dateTime', default: '', description: 'Sync incremental' },
+		],
+	},
 
-	// ── Buscar ───────────────────────────────────────────────────────────────────
+	// ── Buscar / Excluir ─────────────────────────────────────────────────────────
 	{
 		displayName: 'ID da Pessoa',
 		name: 'personId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['person'], operation: ['get'] } },
-		description: 'ID da pessoa a buscar',
+		displayOptions: { show: { resource: ['person'], operation: ['get', 'delete'] } },
 	},
 
 	// ── Criar ────────────────────────────────────────────────────────────────────
@@ -70,152 +93,83 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['person'], operation: ['post'] } },
 	},
 	{
-		displayName: 'Campos Opcionais',
-		name: 'personOptional',
+		displayName: 'Campos Adicionais',
+		name: 'personPostFields',
 		type: 'collection',
 		placeholder: 'Adicionar campo',
 		default: {},
 		displayOptions: { show: { resource: ['person'], operation: ['post'] } },
 		options: [
 			{ displayName: 'E-mail', name: 'email', type: 'string', default: '' },
-			{ displayName: 'Celular', name: 'cellphone', type: 'string', default: '' },
-			{ displayName: 'Telefone', name: 'telephone', type: 'string', default: '' },
+			{ displayName: 'Telefone', name: 'telefone', type: 'string', default: '' },
+			{ displayName: 'Celular', name: 'celular', type: 'string', default: '' },
+			{ displayName: 'IDs de Clientes (separados por vírgula)', name: 'idsClientes', type: 'string', default: '', placeholder: '1,2,3' },
 		],
-	},
-	{
-		displayName: 'Endereço',
-		name: 'personAddress',
-		type: 'fixedCollection',
-		typeOptions: { multipleValues: false },
-		placeholder: 'Adicionar endereço',
-		default: {},
-		displayOptions: { show: { resource: ['person'], operation: ['post'] } },
-		options: [
-			{
-				name: 'values',
-				displayName: 'Endereço',
-				values: [
-					{ displayName: 'Logradouro', name: 'address', type: 'string', default: '' },
-					{ displayName: 'Número', name: 'number', type: 'string', default: '' },
-					{ displayName: 'Complemento', name: 'complement', type: 'string', default: '' },
-					{ displayName: 'Bairro', name: 'neighborhood', type: 'string', default: '' },
-					{ displayName: 'CEP', name: 'zipCode', type: 'string', default: '' },
-					{ displayName: 'Cidade', name: 'city', type: 'string', default: '' },
-					{ displayName: 'Estado', name: 'state', type: 'string', default: '' },
-					{ displayName: 'País', name: 'country', type: 'string', default: '' },
-					{ displayName: 'Latitude', name: 'latitude', type: 'number', default: 0 },
-					{ displayName: 'Longitude', name: 'longitude', type: 'number', default: 0 },
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Campos Personalizados (JSON)',
-		name: 'personFields',
-		type: 'string',
-		typeOptions: { rows: 4 },
-		default: '[]',
-		displayOptions: { show: { resource: ['person'], operation: ['post'] } },
-		description: 'Array JSON. Ex: [{"idField":1,"idFieldOption":0,"value":"texto"}]',
-	},
-	{
-		displayName: 'IDs de Clientes (separados por vírgula)',
-		name: 'personIdsClients',
-		type: 'string',
-		default: '',
-		displayOptions: { show: { resource: ['person'], operation: ['post'] } },
-		placeholder: '1,2,3',
 	},
 
 	// ── Editar ───────────────────────────────────────────────────────────────────
 	{
 		displayName: 'ID da Pessoa',
-		name: 'personId',
+		name: 'personEditId',
 		type: 'number',
 		default: 0,
 		required: true,
 		displayOptions: { show: { resource: ['person'], operation: ['put'] } },
-		description: 'ID da pessoa a editar',
 	},
 	{
-		displayName: 'Campos',
+		displayName: 'Campos a Atualizar',
 		name: 'personPutFields',
 		type: 'collection',
 		placeholder: 'Adicionar campo',
 		default: {},
 		displayOptions: { show: { resource: ['person'], operation: ['put'] } },
 		options: [
-			{ displayName: 'Nome', name: 'name', type: 'string', default: '' },
+			{ displayName: 'Nome', name: 'nome', type: 'string', default: '' },
 			{ displayName: 'E-mail', name: 'email', type: 'string', default: '' },
-			{ displayName: 'Celular', name: 'cellphone', type: 'string', default: '' },
-			{ displayName: 'Telefone', name: 'telephone', type: 'string', default: '' },
+			{ displayName: 'Telefone', name: 'telefone', type: 'string', default: '' },
+			{ displayName: 'Celular', name: 'celular', type: 'string', default: '' },
+			{ displayName: 'Ativo', name: 'ativo', type: 'boolean', default: true },
 		],
-	},
-	{
-		displayName: 'Endereço',
-		name: 'personAddress',
-		type: 'fixedCollection',
-		typeOptions: { multipleValues: false },
-		placeholder: 'Adicionar endereço',
-		default: {},
-		displayOptions: { show: { resource: ['person'], operation: ['put'] } },
-		options: [
-			{
-				name: 'values',
-				displayName: 'Endereço',
-				values: [
-					{ displayName: 'Logradouro', name: 'address', type: 'string', default: '' },
-					{ displayName: 'Número', name: 'number', type: 'string', default: '' },
-					{ displayName: 'Complemento', name: 'complement', type: 'string', default: '' },
-					{ displayName: 'Bairro', name: 'neighborhood', type: 'string', default: '' },
-					{ displayName: 'CEP', name: 'zipCode', type: 'string', default: '' },
-					{ displayName: 'Cidade', name: 'city', type: 'string', default: '' },
-					{ displayName: 'Estado', name: 'state', type: 'string', default: '' },
-					{ displayName: 'País', name: 'country', type: 'string', default: '' },
-					{ displayName: 'Latitude', name: 'latitude', type: 'number', default: 0 },
-					{ displayName: 'Longitude', name: 'longitude', type: 'number', default: 0 },
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Campos Personalizados (JSON)',
-		name: 'personFields',
-		type: 'string',
-		typeOptions: { rows: 4 },
-		default: '[]',
-		displayOptions: { show: { resource: ['person'], operation: ['put'] } },
-		description: 'Array JSON. Ex: [{"name":"campo","idField":1,"idFieldOption":0,"value":"texto"}]',
 	},
 
-	// ── Excluir ──────────────────────────────────────────────────────────────────
+	// ── Ativar/Inativar em Lote ──────────────────────────────────────────────────
 	{
 		displayName: 'IDs das Pessoas (separados por vírgula)',
-		name: 'personDeleteIds',
+		name: 'personStatusIds',
 		type: 'string',
 		default: '',
 		required: true,
-		displayOptions: { show: { resource: ['person'], operation: ['delete'] } },
-		description: 'IDs das pessoas a excluir. Ex: 1,2,3',
+		displayOptions: { show: { resource: ['person'], operation: ['status'] } },
+		description: 'Máximo 500 por chamada. Ex: 1,2,3',
 		placeholder: '1,2,3',
 	},
+	{
+		displayName: 'Ativo',
+		name: 'personStatusAtivo',
+		type: 'boolean',
+		default: true,
+		required: true,
+		displayOptions: { show: { resource: ['person'], operation: ['status'] } },
+	},
 
-	// ── Vincular Cliente ─────────────────────────────────────────────────────────
+	// ── Vincular / Desvincular Clientes ──────────────────────────────────────────
 	{
 		displayName: 'ID da Pessoa',
-		name: 'personId',
+		name: 'personLinkId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['person'], operation: ['linkClient'] } },
+		displayOptions: { show: { resource: ['person'], operation: ['linkClients', 'unlinkClients'] } },
 	},
 	{
-		displayName: 'ID do Cliente',
-		name: 'personLinkClientId',
-		type: 'number',
-		default: 0,
+		displayName: 'IDs dos Clientes (separados por vírgula)',
+		name: 'personLinkClientIds',
+		type: 'string',
+		default: '',
 		required: true,
-		displayOptions: { show: { resource: ['person'], operation: ['linkClient'] } },
+		displayOptions: { show: { resource: ['person'], operation: ['linkClients', 'unlinkClients'] } },
+		description: 'Máximo 500 por chamada. Ex: 1,2,3',
+		placeholder: '1,2,3',
 	},
 ];
 
@@ -228,20 +182,31 @@ export async function execute(
 	const operation = this.getNodeParameter('operation', i) as string;
 
 	if (operation === 'list') {
-		const numberOfRows = this.getNodeParameter('personNumberOfRows', i) as number;
-		const numberOfRowsSkipped = this.getNodeParameter('personNumberOfRowsSkipped', i) as number;
-		const search = this.getNodeParameter('personSearch', i, '') as string;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const search = this.getNodeParameter('search', i, '') as string;
+		const activeParam = this.getNodeParameter('personActive', i, 'all') as string;
+		const filters = this.getNodeParameter('personListFilters', i, {}) as IDataObject;
+
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (search.trim()) reqBody.busca = search;
+		if (activeParam !== 'all') reqBody.ativo = activeParam === 'true';
+		if (typeof filters.email === 'string' && filters.email.trim()) reqBody.email = filters.email;
+		if (typeof filters.ids === 'string' && filters.ids.trim()) reqBody.ids = toNumArray(filters.ids);
+		if (typeof filters.ids_clientes === 'string' && filters.ids_clientes.trim()) {
+			reqBody.ids_clientes = toNumArray(filters.ids_clientes);
+		}
+		if (filters.atualizado_apos) reqBody.atualizado_apos = filters.atualizado_apos;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/person/list`,
+			url: `${baseUrl}/v2/pessoas/list`,
 			headers: authHeaders,
-			body: { numberOfRows, numberOfRowsSkipped, search },
+			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	if (operation === 'get') {
@@ -249,97 +214,94 @@ export async function execute(
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'GET',
-			url: `${baseUrl}/api/v1/person/get?idPerson=${id}`,
+			url: `${baseUrl}/v2/pessoas/${id}`,
 			headers: authHeaders,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'post') {
-		const name = this.getNodeParameter('personName', i) as string;
-		const optional = this.getNodeParameter('personOptional', i, {}) as IDataObject;
-		const addressData = (this.getNodeParameter('personAddress', i, {}) as IDataObject).values as IDataObject | undefined;
-		const fieldsRaw = this.getNodeParameter('personFields', i, '[]') as string;
-		const idsClientsRaw = this.getNodeParameter('personIdsClients', i, '') as string;
+		const nome = this.getNodeParameter('personName', i) as string;
+		const fields = this.getNodeParameter('personPostFields', i, {}) as IDataObject;
 
-		const reqBody: IDataObject = { name, ...optional };
-		if (addressData && Object.keys(addressData).length) reqBody.address = addressData;
-		reqBody.fields = parseJson(fieldsRaw, this.getNode(), 'Campos Personalizados');
-		if (idsClientsRaw.trim()) {
-			reqBody.idsClients = idsClientsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+		const reqBody: IDataObject = { nome };
+		if (typeof fields.email === 'string' && fields.email) reqBody.email = fields.email;
+		if (typeof fields.telefone === 'string' && fields.telefone) reqBody.telefone = fields.telefone;
+		if (typeof fields.celular === 'string' && fields.celular) reqBody.celular = fields.celular;
+		if (typeof fields.idsClientes === 'string' && fields.idsClientes.trim()) {
+			reqBody.ids_clientes = toNumArray(fields.idsClientes);
 		}
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/person/post`,
+			url: `${baseUrl}/v2/pessoas/post`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'put') {
-		const id = this.getNodeParameter('personId', i) as number;
+		const id = this.getNodeParameter('personEditId', i) as number;
 		const fields = this.getNodeParameter('personPutFields', i, {}) as IDataObject;
-		const addressData = (this.getNodeParameter('personAddress', i, {}) as IDataObject).values as IDataObject | undefined;
-		const fieldsRaw = this.getNodeParameter('personFields', i, '[]') as string;
-
-		const reqBody: IDataObject = { id, ...fields };
-		if (addressData && Object.keys(addressData).length) reqBody.address = addressData;
-		reqBody.fields = parseJson(fieldsRaw, this.getNode(), 'Campos Personalizados');
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'PUT',
-			url: `${baseUrl}/api/v1/person/put`,
+			url: `${baseUrl}/v2/pessoas/${id}`,
 			headers: authHeaders,
-			body: reqBody,
+			body: fields,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'delete') {
-		const idsRaw = this.getNodeParameter('personDeleteIds', i) as string;
-		const ids = idsRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-
-		const res = await this.helpers.httpRequest({
-			method: 'DELETE',
-			url: `${baseUrl}/api/v1/person/delete`,
-			headers: authHeaders,
-			body: ids,
-			json: true,
-			returnFullResponse: true,
-			ignoreHttpStatusErrors: true,
-		});
-
-		assertApiSuccess(res.statusCode as number, res.body, this.getNode());
-
-		const data = (res.body as IDataObject)?.data ?? res.body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
-	}
-
-	if (operation === 'linkClient') {
-		const idPerson = this.getNodeParameter('personId', i) as number;
-		const idClient = this.getNodeParameter('personLinkClientId', i) as number;
+		const id = this.getNodeParameter('personId', i) as number;
 
 		const { statusCode, body } = await apiRequest.call(this, {
-			method: 'POST',
-			url: `${baseUrl}/api/v1/person/link-client`,
+			method: 'DELETE',
+			url: `${baseUrl}/v2/pessoas/${id}`,
 			headers: authHeaders,
-			body: { idPerson, idClient },
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([{ id, excluido: true }]);
+	}
+
+	if (operation === 'status') {
+		const idsPessoas = toNumArray(this.getNodeParameter('personStatusIds', i) as string);
+		const ativo = this.getNodeParameter('personStatusAtivo', i) as boolean;
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'POST',
+			url: `${baseUrl}/v2/pessoas/status`,
+			headers: authHeaders,
+			body: { ids_pessoas: idsPessoas, ativo },
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ idsPessoas, ativo, sucesso: true }]);
+	}
+
+	if (operation === 'linkClients' || operation === 'unlinkClients') {
+		const idPessoa = this.getNodeParameter('personLinkId', i) as number;
+		const idsClientes = toNumArray(this.getNodeParameter('personLinkClientIds', i) as string);
+		const subPath = operation === 'linkClients' ? 'vincular' : 'desvincular';
+
+		const { statusCode, body } = await apiRequest.call(this, {
+			method: 'POST',
+			url: `${baseUrl}/v2/pessoas/clientes/${subPath}`,
+			headers: authHeaders,
+			body: { id_pessoa: idPessoa, ids_clientes: idsClientes },
+		});
+		assertApiSuccess(statusCode, body, this.getNode());
+
+		return this.helpers.returnJsonArray([{ idPessoa, idsClientes, sucesso: true }]);
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
+import { apiRequest, assertApiSuccess, toList } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -11,7 +11,6 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['noteClient'] } },
 		options: [
 			{ name: 'Listar', value: 'list', description: 'Listar notas do cliente', action: 'Listar notas do cliente' },
-			{ name: 'Buscar', value: 'get', description: 'Buscar nota por ID do cliente', action: 'Buscar nota do cliente' },
 			{ name: 'Criar', value: 'post', description: 'Criar uma nova nota', action: 'Criar nota do cliente' },
 			{ name: 'Editar', value: 'put', description: 'Editar uma nota existente', action: 'Editar nota do cliente' },
 			{ name: 'Excluir', value: 'delete', description: 'Excluir uma nota pelo ID', action: 'Excluir nota do cliente' },
@@ -19,74 +18,51 @@ export const description: INodeProperties[] = [
 		default: 'list',
 	},
 
-	// ── Buscar ───────────────────────────────────────────────────────────────────
+	// ── Listar ───────────────────────────────────────────────────────────────────
 	{
 		displayName: 'ID do Cliente',
 		name: 'noteClientId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['noteClient'], operation: ['get'] } },
-		description: 'ID do cliente para buscar as notas',
+		displayOptions: { show: { resource: ['noteClient'], operation: ['list', 'post'] } },
+	},
+	{
+		displayName: 'Página',
+		name: 'page',
+		type: 'number',
+		default: 1,
+		typeOptions: { minValue: 1 },
+		displayOptions: { show: { resource: ['noteClient'], operation: ['list'] } },
+	},
+	{
+		displayName: 'Por Página',
+		name: 'perPage',
+		type: 'number',
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
+		displayOptions: { show: { resource: ['noteClient'], operation: ['list'] } },
 	},
 
 	// ── Criar ────────────────────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Cliente',
-		name: 'noteClientId',
-		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['noteClient'], operation: ['post'] } },
-		description: 'ID do cliente ao qual a nota será vinculada',
-	},
-	{
 		displayName: 'Nota',
 		name: 'noteText',
 		type: 'string',
 		typeOptions: { rows: 3 },
 		default: '',
 		required: true,
-		displayOptions: { show: { resource: ['noteClient'], operation: ['post'] } },
+		displayOptions: { show: { resource: ['noteClient'], operation: ['post', 'put'] } },
 	},
 
-	// ── Editar ───────────────────────────────────────────────────────────────────
+	// ── Editar / Excluir ─────────────────────────────────────────────────────────
 	{
 		displayName: 'ID da Nota',
 		name: 'noteId',
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['noteClient'], operation: ['put'] } },
-		description: 'ID da nota a editar',
-	},
-	{
-		displayName: 'ID do Cliente',
-		name: 'noteClientId',
-		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['noteClient'], operation: ['put'] } },
-	},
-	{
-		displayName: 'Nota',
-		name: 'noteText',
-		type: 'string',
-		typeOptions: { rows: 3 },
-		default: '',
-		required: true,
-		displayOptions: { show: { resource: ['noteClient'], operation: ['put'] } },
-	},
-
-	// ── Excluir ──────────────────────────────────────────────────────────────────
-	{
-		displayName: 'ID da Nota',
-		name: 'noteId',
-		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['noteClient'], operation: ['delete'] } },
-		description: 'ID da nota a excluir',
+		displayOptions: { show: { resource: ['noteClient'], operation: ['put', 'delete'] } },
 	},
 ];
 
@@ -99,62 +75,49 @@ export async function execute(
 	const operation = this.getNodeParameter('operation', i) as string;
 
 	if (operation === 'list') {
+		const idClient = this.getNodeParameter('noteClientId', i) as number;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/noteClient/list`,
+			url: `${baseUrl}/v2/clientes/${idClient}/notas/list`,
 			headers: authHeaders,
+			body: { pagina: page, por_pagina: perPage },
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
-	}
-
-	if (operation === 'get') {
-		const idClient = this.getNodeParameter('noteClientId', i) as number;
-
-		const { statusCode, body } = await apiRequest.call(this, {
-			method: 'GET',
-			url: `${baseUrl}/api/v1/noteClient/get?idClient=${idClient}`,
-			headers: authHeaders,
-		});
-		assertApiSuccess(statusCode, body, this.getNode());
-
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	if (operation === 'post') {
 		const idClient = this.getNodeParameter('noteClientId', i) as number;
-		const note = this.getNodeParameter('noteText', i) as string;
+		const nota = this.getNodeParameter('noteText', i) as string;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/noteClient/post`,
+			url: `${baseUrl}/v2/clientes/${idClient}/notas`,
 			headers: authHeaders,
-			body: { idClient, note },
+			body: { nota },
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'put') {
 		const id = this.getNodeParameter('noteId', i) as number;
-		const idClient = this.getNodeParameter('noteClientId', i) as number;
-		const note = this.getNodeParameter('noteText', i) as string;
+		const nota = this.getNodeParameter('noteText', i) as string;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'PUT',
-			url: `${baseUrl}/api/v1/noteClient/put`,
+			url: `${baseUrl}/v2/notas-cliente/${id}`,
 			headers: authHeaders,
-			body: { id, idClient, note },
+			body: { nota },
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'delete') {
@@ -162,13 +125,12 @@ export async function execute(
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'DELETE',
-			url: `${baseUrl}/api/v1/noteClient/delete?id=${id}`,
+			url: `${baseUrl}/v2/notas-cliente/${id}`,
 			headers: authHeaders,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([{ id, excluido: true }]);
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

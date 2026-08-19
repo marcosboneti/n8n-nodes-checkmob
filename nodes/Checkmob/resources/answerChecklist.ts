@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
+import { apiRequest, assertApiSuccess, toList } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -10,9 +10,9 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['answerChecklist'] } },
 		options: [
-			{ name: 'Buscar por Registro', value: 'get', description: 'Buscar respostas pelo ID do registro', action: 'Buscar respostas por registro' },
+			{ name: 'Buscar por Registro', value: 'get', description: 'Buscar respostas pelo ID do registro. 404 significa que não houve questionário nesta visita (não é erro de integração)', action: 'Buscar respostas por registro' },
 			{ name: 'Buscar por Ordem de Serviço', value: 'getByServiceOrder', description: 'Buscar respostas pelo ID da ordem de serviço', action: 'Buscar respostas por OS' },
-			{ name: 'Listar', value: 'list', description: 'Listar checklists respondidos', action: 'Listar checklists respondidos' },
+			{ name: 'Listar', value: 'list', description: 'Listar questionários respondidos (resumo)', action: 'Listar questionários respondidos' },
 		],
 		default: 'list',
 	},
@@ -39,31 +39,28 @@ export const description: INodeProperties[] = [
 
 	// ── Listar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'Número de Registros',
-		name: 'acNumberOfRows',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 50,
-		required: true,
+		default: 1,
 		typeOptions: { minValue: 1 },
 		displayOptions: { show: { resource: ['answerChecklist'], operation: ['list'] } },
-		description: 'Quantidade de registros a retornar (mínimo 1)',
 	},
 	{
-		displayName: 'Registros a Pular',
-		name: 'acNumberOfRowsSkipped',
+		displayName: 'Por Página',
+		name: 'perPage',
 		type: 'number',
-		default: 0,
-		required: true,
-		typeOptions: { minValue: 0 },
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
 		displayOptions: { show: { resource: ['answerChecklist'], operation: ['list'] } },
 	},
 	{
-		displayName: 'Data de Atualização',
-		name: 'acUpdateDate',
+		displayName: 'Atualizado Após',
+		name: 'acUpdatedAfter',
 		type: 'dateTime',
 		default: '',
 		displayOptions: { show: { resource: ['answerChecklist'], operation: ['list'] } },
-		description: 'Filtrar registros atualizados a partir desta data',
+		description: 'Sync incremental: retorna apenas registros atualizados após esta data',
 	},
 ];
 
@@ -80,13 +77,12 @@ export async function execute(
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'GET',
-			url: `${baseUrl}/api/v1/answerchecklist/get?idService=${idService}`,
+			url: `${baseUrl}/v2/respostas-questionario/${idService}`,
 			headers: authHeaders,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'getByServiceOrder') {
@@ -94,33 +90,31 @@ export async function execute(
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'GET',
-			url: `${baseUrl}/api/v1/answerchecklist/getByServiceOrderId?idServiceOrder=${idServiceOrder}`,
+			url: `${baseUrl}/v2/respostas-questionario/ordem-servico/${idServiceOrder}`,
 			headers: authHeaders,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	if (operation === 'list') {
-		const numberOfRows = this.getNodeParameter('acNumberOfRows', i) as number;
-		const numberOfRowsSkipped = this.getNodeParameter('acNumberOfRowsSkipped', i) as number;
-		const updateDate = this.getNodeParameter('acUpdateDate', i, '') as string;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
+		const updatedAfter = this.getNodeParameter('acUpdatedAfter', i, '') as string;
 
-		const reqBody: IDataObject = { numberOfRows, numberOfRowsSkipped };
-		if (updateDate) reqBody.updateDate = updateDate;
+		const reqBody: IDataObject = { pagina: page, por_pagina: perPage };
+		if (updatedAfter) reqBody.atualizado_apos = updatedAfter;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'POST',
-			url: `${baseUrl}/api/v1/answerchecklist/list`,
+			url: `${baseUrl}/v2/respostas-questionario/list`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);

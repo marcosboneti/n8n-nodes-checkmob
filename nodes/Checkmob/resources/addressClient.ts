@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, assertApiSuccess } from '../transport';
+import { apiRequest, assertApiSuccess, toList } from '../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -10,8 +10,8 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['addressClient'] } },
 		options: [
-			{ name: 'Buscar', value: 'get', description: 'Buscar endereço do cliente pelo ID', action: 'Buscar endereço do cliente' },
-			{ name: 'Editar', value: 'put', description: 'Editar endereço do cliente', action: 'Editar endereço do cliente' },
+			{ name: 'Listar', value: 'get', description: 'Listar endereços do cliente', action: 'Listar endereços do cliente' },
+			{ name: 'Substituir Principal', value: 'put', description: 'Substituir o endereço principal do cliente', action: 'Substituir endereço do cliente' },
 		],
 		default: 'get',
 	},
@@ -21,25 +21,37 @@ export const description: INodeProperties[] = [
 		type: 'number',
 		default: 0,
 		required: true,
-		displayOptions: { show: { resource: ['addressClient'], operation: ['get'] } },
-		description: 'ID do cliente para buscar o endereço',
+		displayOptions: { show: { resource: ['addressClient'], operation: ['get', 'put'] } },
 	},
 	{
-		displayName: 'ID do Cliente',
-		name: 'addrClientId',
+		displayName: 'Página',
+		name: 'page',
 		type: 'number',
-		default: 0,
-		required: true,
-		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
-		description: 'ID do cliente cujo endereço será editado',
+		default: 1,
+		typeOptions: { minValue: 1 },
+		displayOptions: { show: { resource: ['addressClient'], operation: ['get'] } },
 	},
 	{
-		displayName: 'Endereço',
+		displayName: 'Por Página',
+		name: 'perPage',
+		type: 'number',
+		default: 25,
+		typeOptions: { minValue: 1, maxValue: 100 },
+		displayOptions: { show: { resource: ['addressClient'], operation: ['get'] } },
+	},
+	{
+		displayName: 'Descrição',
+		name: 'addrDescricao',
+		type: 'string',
+		default: '',
+		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
+	},
+	{
+		displayName: 'Logradouro',
 		name: 'address',
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
-		description: 'Logradouro (rua, avenida, etc.)',
 	},
 	{
 		displayName: 'Número',
@@ -70,20 +82,6 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
 	},
 	{
-		displayName: 'Latitude',
-		name: 'latitude',
-		type: 'number',
-		default: 0,
-		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
-	},
-	{
-		displayName: 'Longitude',
-		name: 'longitude',
-		type: 'number',
-		default: 0,
-		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
-	},
-	{
 		displayName: 'Cidade',
 		name: 'city',
 		type: 'string',
@@ -98,10 +96,17 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
 	},
 	{
-		displayName: 'País',
-		name: 'country',
-		type: 'string',
-		default: '',
+		displayName: 'Latitude',
+		name: 'latitude',
+		type: 'number',
+		default: 0,
+		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
+	},
+	{
+		displayName: 'Longitude',
+		name: 'longitude',
+		type: 'number',
+		default: 0,
 		displayOptions: { show: { resource: ['addressClient'], operation: ['put'] } },
 	},
 ];
@@ -116,44 +121,45 @@ export async function execute(
 
 	if (operation === 'get') {
 		const addrClientId = this.getNodeParameter('addrClientId', i) as number;
+		const page = this.getNodeParameter('page', i, 1) as number;
+		const perPage = this.getNodeParameter('perPage', i, 25) as number;
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'GET',
-			url: `${baseUrl}/api/v1/addressclient/get?idClient=${addrClientId}`,
+			url: `${baseUrl}/v2/clientes/${addrClientId}/endereco`,
 			headers: authHeaders,
+			qs: { pagina: page, por_pagina: perPage },
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray(toList(body));
 	}
 
 	if (operation === 'put') {
 		const addrClientId = this.getNodeParameter('addrClientId', i) as number;
 		const reqBody: IDataObject = {
-			idClient: addrClientId,
-			address: this.getNodeParameter('address', i, '') as string,
-			number: this.getNodeParameter('number', i, '') as string,
-			complement: this.getNodeParameter('complement', i, '') as string,
-			neighborhood: this.getNodeParameter('neighborhood', i, '') as string,
-			zipCode: this.getNodeParameter('zipCode', i, '') as string,
+			id_cliente: addrClientId,
+			descricao: this.getNodeParameter('addrDescricao', i, '') as string,
+			logradouro: this.getNodeParameter('address', i, '') as string,
+			numero: this.getNodeParameter('number', i, '') as string,
+			complemento: this.getNodeParameter('complement', i, '') as string,
+			bairro: this.getNodeParameter('neighborhood', i, '') as string,
+			cep: this.getNodeParameter('zipCode', i, '') as string,
+			cidade: this.getNodeParameter('city', i, '') as string,
+			estado: this.getNodeParameter('state', i, '') as string,
 			latitude: this.getNodeParameter('latitude', i, 0) as number,
 			longitude: this.getNodeParameter('longitude', i, 0) as number,
-			city: this.getNodeParameter('city', i, '') as string,
-			state: this.getNodeParameter('state', i, '') as string,
-			country: this.getNodeParameter('country', i, '') as string,
 		};
 
 		const { statusCode, body } = await apiRequest.call(this, {
 			method: 'PUT',
-			url: `${baseUrl}/api/v1/addressclient/put`,
+			url: `${baseUrl}/v2/clientes/${addrClientId}/endereco`,
 			headers: authHeaders,
 			body: reqBody,
 		});
 		assertApiSuccess(statusCode, body, this.getNode());
 
-		const data = (body as IDataObject)?.data ?? body;
-		return this.helpers.returnJsonArray(Array.isArray(data) ? data : [data as IDataObject]);
+		return this.helpers.returnJsonArray([body as IDataObject]);
 	}
 
 	throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`);
