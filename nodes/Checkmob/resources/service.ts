@@ -20,7 +20,7 @@ export const description: INodeProperties[] = [
 
 	// ── Buscar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Registro',
+		displayName: 'ID Do Registro',
 		name: 'serviceId',
 		type: 'number',
 		default: 0,
@@ -53,16 +53,6 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: { show: { resource: ['service'], operation: ['list'] } },
 		options: [
-			{ displayName: 'Busca', name: 'busca', type: 'string', default: '' },
-			{ displayName: 'Código', name: 'codigo', type: 'number', default: 0 },
-			{ displayName: 'ID da Ordem de Serviço', name: 'id_ordem_servico', type: 'number', default: 0 },
-			{ displayName: 'IDs (separados por vírgula)', name: 'ids', type: 'string', default: '', placeholder: '1,2,3' },
-			{ displayName: 'IDs de Cliente (separados por vírgula)', name: 'ids_cliente', type: 'string', default: '', placeholder: '1,2,3' },
-			{ displayName: 'IDs de Usuário (separados por vírgula)', name: 'ids_usuario', type: 'string', default: '', placeholder: '1,2,3' },
-			{ displayName: 'IDs de Grupo (separados por vírgula)', name: 'ids_grupo', type: 'string', default: '', placeholder: '1,2,3' },
-			{ displayName: 'IDs de Segmento (separados por vírgula)', name: 'ids_segmento', type: 'string', default: '', placeholder: '1,2,3' },
-			{ displayName: 'IDs de Objetivo (separados por vírgula)', name: 'ids_objetivo', type: 'string', default: '', placeholder: '1,2,3' },
-			{ displayName: 'IDs de Status (separados por vírgula)', name: 'ids_status', type: 'string', default: '', placeholder: '1,2,3' },
 			{
 				displayName: 'Agendado',
 				name: 'agendado',
@@ -70,6 +60,8 @@ export const description: INodeProperties[] = [
 				options: [{ name: 'Todos', value: 'all' }, { name: 'Sim', value: 'true' }, { name: 'Não', value: 'false' }],
 				default: 'all',
 			},
+			{ displayName: 'Agendado Antes', name: 'data_agendada_antes', type: 'dateTime', default: '' },
+			{ displayName: 'Agendado Após', name: 'data_agendada_apos', type: 'dateTime', default: '' },
 			{
 				displayName: 'Ativo',
 				name: 'ativo',
@@ -77,6 +69,9 @@ export const description: INodeProperties[] = [
 				options: [{ name: 'Todos', value: 'all' }, { name: 'Sim', value: 'true' }, { name: 'Não', value: 'false' }],
 				default: 'all',
 			},
+			{ displayName: 'Atualizado Após', name: 'atualizado_apos', type: 'dateTime', default: '', description: 'Sync incremental' },
+			{ displayName: 'Busca', name: 'busca', type: 'string', default: '' },
+			{ displayName: 'Código', name: 'codigo', type: 'number', default: 0 },
 			{
 				displayName: 'Concluído',
 				name: 'concluido',
@@ -84,17 +79,23 @@ export const description: INodeProperties[] = [
 				options: [{ name: 'Todos', value: 'all' }, { name: 'Sim', value: 'true' }, { name: 'Não', value: 'false' }],
 				default: 'all',
 			},
-			{ displayName: 'Realizado Após', name: 'data_realizacao_apos', type: 'dateTime', default: '' },
+			{ displayName: 'ID Da Ordem De Serviço', name: 'id_ordem_servico', type: 'number', default: 0 },
+			{ displayName: 'IDs (Separados Por Vírgula)', name: 'ids', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs De Cliente (Separados Por Vírgula)', name: 'ids_cliente', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs De Grupo (Separados Por Vírgula)', name: 'ids_grupo', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs De Objetivo (Separados Por Vírgula)', name: 'ids_objetivo', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs De Segmento (Separados Por Vírgula)', name: 'ids_segmento', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs De Status (Separados Por Vírgula)', name: 'ids_status', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs De Usuário (Separados Por Vírgula)', name: 'ids_usuario', type: 'string', default: '', placeholder: '1,2,3' },
 			{ displayName: 'Realizado Antes', name: 'data_realizacao_antes', type: 'dateTime', default: '' },
-			{ displayName: 'Agendado Após', name: 'data_agendada_apos', type: 'dateTime', default: '' },
-			{ displayName: 'Agendado Antes', name: 'data_agendada_antes', type: 'dateTime', default: '' },
-			{ displayName: 'Atualizado Após', name: 'atualizado_apos', type: 'dateTime', default: '', description: 'Sync incremental' },
+			{ displayName: 'Realizado Após', name: 'data_realizacao_apos', type: 'dateTime', default: '' },
+			
 		],
 	},
 
 	// ── Criar Agendado ───────────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Cliente',
+		displayName: 'ID Do Cliente',
 		name: 'svcIdClient',
 		type: 'number',
 		default: 0,
@@ -102,7 +103,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['service'], operation: ['post'] } },
 	},
 	{
-		displayName: 'ID do Usuário',
+		displayName: 'ID Do Usuário',
 		name: 'svcIdUser',
 		type: 'number',
 		default: 0,
@@ -142,18 +143,18 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: { show: { resource: ['service'], operation: ['post'] } },
 		options: [
-			{ displayName: 'ID do Segmento', name: 'id_segmento', type: 'number', default: 0 },
-			{ displayName: 'ID do Contato', name: 'id_contato', type: 'number', default: 0 },
-			{ displayName: 'ID da Ordem de Serviço', name: 'id_ordem_servico', type: 'number', default: 0 },
-			{ displayName: 'ID do Objetivo', name: 'id_objetivo', type: 'number', default: 0 },
-			{ displayName: 'ID da Equipe', name: 'id_equipe', type: 'number', default: 0 },
+			{ displayName: 'ID Da Equipe', name: 'id_equipe', type: 'number', default: 0 },
+			{ displayName: 'ID Da Ordem De Serviço', name: 'id_ordem_servico', type: 'number', default: 0 },
+			{ displayName: 'ID Do Contato', name: 'id_contato', type: 'number', default: 0 },
+			{ displayName: 'ID Do Objetivo', name: 'id_objetivo', type: 'number', default: 0 },
+			{ displayName: 'ID Do Segmento', name: 'id_segmento', type: 'number', default: 0 },			
 			{ displayName: 'Instruções', name: 'instrucoes', type: 'string', default: '' },
 		],
 	},
 
 	// ── Editar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Registro',
+		displayName: 'ID Do Registro',
 		name: 'serviceEditId',
 		type: 'number',
 		default: 0,
@@ -161,20 +162,20 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['service'], operation: ['put'] } },
 	},
 	{
-		displayName: 'Campos a Atualizar',
+		displayName: 'Campos A Atualizar',
 		name: 'svcPutFields',
 		type: 'collection',
 		placeholder: 'Adicionar campo',
 		default: {},
 		displayOptions: { show: { resource: ['service'], operation: ['put'] } },
 		options: [
+			{ displayName: 'ID Do Cliente', name: 'id_cliente', type: 'number', default: 0 },
+			{ displayName: 'ID Do Objetivo', name: 'id_objetivo', type: 'number', default: 0 },
 			{ displayName: 'Início (Checkin)', name: 'data_inicio', type: 'dateTime', default: '' },
-			{ displayName: 'Realização (Checkout)', name: 'data_realizacao', type: 'dateTime', default: '' },
-			{ displayName: 'ID do Cliente', name: 'id_cliente', type: 'number', default: 0 },
-			{ displayName: 'ID do Objetivo', name: 'id_objetivo', type: 'number', default: 0 },
-			{ displayName: 'Observação', name: 'observacao', type: 'string', default: '' },
 			{ displayName: 'Latitude', name: 'latitude', type: 'number', default: 0 },
 			{ displayName: 'Longitude', name: 'longitude', type: 'number', default: 0 },
+			{ displayName: 'Observação', name: 'observacao', type: 'string', default: '' },
+			{ displayName: 'Realização (Checkout)', name: 'data_realizacao', type: 'dateTime', default: '' },
 		],
 	},
 ];

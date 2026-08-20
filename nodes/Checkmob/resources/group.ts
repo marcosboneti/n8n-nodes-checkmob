@@ -10,11 +10,11 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['group'] } },
 		options: [
-			{ name: 'Listar', value: 'list', description: 'Listar grupos', action: 'Listar grupos' },
 			{ name: 'Buscar', value: 'get', description: 'Buscar grupo pelo ID', action: 'Buscar grupo' },
 			{ name: 'Criar', value: 'post', description: 'Criar um novo grupo', action: 'Criar grupo' },
 			{ name: 'Editar', value: 'put', description: 'Substituir um grupo existente', action: 'Editar grupo' },
 			{ name: 'Excluir', value: 'delete', description: 'Excluir um grupo', action: 'Excluir grupo' },
+			{ name: 'Listar', value: 'list', description: 'Listar grupos', action: 'Listar grupos' },
 		],
 		default: 'list',
 	},
@@ -47,7 +47,7 @@ export const description: INodeProperties[] = [
 		description: 'Busca textual por nome ou palavra-chave',
 	},
 	{
-		displayName: 'IDs dos Usuários (separados por vírgula)',
+		displayName: 'IDs Dos Usuários (Separados Por Vírgula)',
 		name: 'groupFilterIdsUser',
 		type: 'string',
 		default: '',
@@ -66,7 +66,7 @@ export const description: INodeProperties[] = [
 
 	// ── Buscar / Editar / Excluir ───────────────────────────────────────────────
 	{
-		displayName: 'ID do Grupo',
+		displayName: 'ID Do Grupo',
 		name: 'groupId',
 		type: 'number',
 		default: 0,
@@ -85,7 +85,7 @@ export const description: INodeProperties[] = [
 		description: 'Nome do grupo',
 	},
 	{
-		displayName: 'IDs dos Usuários (separados por vírgula)',
+		displayName: 'IDs Dos Usuários (Separados Por Vírgula)',
 		name: 'groupIdsUser',
 		type: 'string',
 		default: '',
@@ -94,7 +94,7 @@ export const description: INodeProperties[] = [
 		placeholder: '1,2,3',
 	},
 	{
-		displayName: 'ID de Origem',
+		displayName: 'ID De Origem',
 		name: 'groupIdOrigem',
 		type: 'number',
 		default: 0,

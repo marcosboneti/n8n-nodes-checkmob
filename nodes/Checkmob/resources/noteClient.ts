@@ -20,7 +20,7 @@ export const description: INodeProperties[] = [
 
 	// ── Listar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Cliente',
+		displayName: 'ID Do Cliente',
 		name: 'noteClientId',
 		type: 'number',
 		default: 0,
@@ -57,7 +57,7 @@ export const description: INodeProperties[] = [
 
 	// ── Editar / Excluir ─────────────────────────────────────────────────────────
 	{
-		displayName: 'ID da Nota',
+		displayName: 'ID Da Nota',
 		name: 'noteId',
 		type: 'number',
 		default: 0,

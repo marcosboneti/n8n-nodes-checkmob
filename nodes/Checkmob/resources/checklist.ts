@@ -10,12 +10,13 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['checklist'] } },
 		options: [
-			{ name: 'Listar', value: 'list', description: 'Listar questionários', action: 'Listar questionários' },
-			{ name: 'Buscar', value: 'get', description: 'Buscar um questionário pelo ID', action: 'Buscar questionário' },
-			{ name: 'Vincular Grupo', value: 'linkGroup', description: 'Vincular um grupo ao questionário', action: 'Vincular grupo ao questionário' },
-			{ name: 'Remover Vínculo de Grupo', value: 'deleteLinkGroup', description: 'Desvincular um grupo do questionário', action: 'Remover vínculo de grupo' },
-			{ name: 'Vincular Segmento', value: 'linkSegment', description: 'Vincular um segmento ao questionário', action: 'Vincular segmento ao questionário' },
-			{ name: 'Remover Vínculo de Segmento', value: 'deleteLinkSegment', description: 'Desvincular um segmento do questionário', action: 'Remover vínculo de segmento' },
+			{ name: 'Buscar', value: 'get', description: 'Buscar um questionário pelo ID', action: 'Buscar questionario' },
+			{ name: 'Listar', value: 'list', description: 'Listar questionários', action: 'Listar questionarios' },	
+			{ name: 'Remover Vínculo De Grupo', value: 'deleteLinkGroup', description: 'Desvincular um grupo do questionário', action: 'Remover vinculo de grupo' },
+			{ name: 'Remover Vínculo De Segmento', value: 'deleteLinkSegment', description: 'Desvincular um segmento do questionário', action: 'Remover vinculo de segmento' },
+			{ name: 'Vincular Grupo', value: 'linkGroup', description: 'Vincular um grupo ao questionário', action: 'Vincular grupo ao questionario' },			
+			{ name: 'Vincular Segmento', value: 'linkSegment', description: 'Vincular um segmento ao questionário', action: 'Vincular segmento ao questionario' },
+			
 		],
 		default: 'list',
 	},
@@ -67,7 +68,7 @@ export const description: INodeProperties[] = [
 
 	// ── Buscar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Questionário',
+		displayName: 'ID Do Questionário',
 		name: 'clGetId',
 		type: 'number',
 		default: 0,
@@ -77,7 +78,7 @@ export const description: INodeProperties[] = [
 
 	// ── Vincular / Remover Grupo e Segmento ──────────────────────────────────────
 	{
-		displayName: 'ID do Questionário',
+		displayName: 'ID Do Questionário',
 		name: 'clId',
 		type: 'number',
 		default: 0,
@@ -85,7 +86,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['checklist'], operation: ['linkGroup', 'deleteLinkGroup', 'linkSegment', 'deleteLinkSegment'] } },
 	},
 	{
-		displayName: 'ID do Grupo',
+		displayName: 'ID Do Grupo',
 		name: 'clIdGroup',
 		type: 'number',
 		default: 0,
@@ -93,7 +94,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['checklist'], operation: ['linkGroup', 'deleteLinkGroup'] } },
 	},
 	{
-		displayName: 'ID do Segmento',
+		displayName: 'ID Do Segmento',
 		name: 'clIdSegment',
 		type: 'number',
 		default: 0,

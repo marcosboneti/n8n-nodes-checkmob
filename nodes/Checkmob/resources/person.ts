@@ -10,14 +10,14 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['person'] } },
 		options: [
-			{ name: 'Listar', value: 'list', description: 'Listar pessoas/contatos', action: 'Listar pessoas' },
+			{ name: 'Ativar/Inativar Em Lote', value: 'status', description: 'Ativar ou inativar pessoas em lote (máx. 500).', action: 'Ativar ou inativar pessoas' },
 			{ name: 'Buscar', value: 'get', description: 'Buscar uma pessoa pelo ID', action: 'Buscar pessoa' },
 			{ name: 'Criar', value: 'post', description: 'Criar uma nova pessoa', action: 'Criar pessoa' },
+			{ name: 'Desvincular Clientes', value: 'unlinkClients', description: 'Desfazer vínculo entre pessoa e clientes (máx. 500).', action: 'Desvincular pessoa de clientes' },
 			{ name: 'Editar', value: 'put', description: 'Editar uma pessoa existente', action: 'Editar pessoa' },
 			{ name: 'Excluir', value: 'delete', description: 'Excluir uma pessoa', action: 'Excluir pessoa' },
-			{ name: 'Ativar/Inativar em Lote', value: 'status', description: 'Ativar ou inativar pessoas em lote (máx. 500).', action: 'Ativar ou inativar pessoas' },
+			{ name: 'Listar', value: 'list', description: 'Listar pessoas/contatos', action: 'Listar pessoas' },
 			{ name: 'Vincular Clientes', value: 'linkClients', description: 'Vincular uma pessoa a um ou mais clientes (máx. 500).', action: 'Vincular pessoa a clientes' },
-			{ name: 'Desvincular Clientes', value: 'unlinkClients', description: 'Desfazer vínculo entre pessoa e clientes (máx. 500).', action: 'Desvincular pessoa de clientes' },
 		],
 		default: 'list',
 	},
@@ -66,16 +66,16 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: { show: { resource: ['person'], operation: ['list'] } },
 		options: [
-			{ displayName: 'E-mail', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
-			{ displayName: 'IDs (separados por vírgula)', name: 'ids', type: 'string', default: '', placeholder: '1,2,3' },
-			{ displayName: 'IDs de Clientes (separados por vírgula)', name: 'ids_clientes', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'Email', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
+			{ displayName: 'IDs (Separados Por Vírgula)', name: 'ids', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs De Clientes (Separados Por Vírgula)', name: 'ids_clientes', type: 'string', default: '', placeholder: '1,2,3' },
 			{ displayName: 'Atualizado Após', name: 'atualizado_apos', type: 'dateTime', default: '', description: 'Sync incremental' },
 		],
 	},
 
 	// ── Buscar / Excluir ─────────────────────────────────────────────────────────
 	{
-		displayName: 'ID da Pessoa',
+		displayName: 'ID Da Pessoa',
 		name: 'personId',
 		type: 'number',
 		default: 0,
@@ -100,16 +100,16 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: { show: { resource: ['person'], operation: ['post'] } },
 		options: [
-			{ displayName: 'E-mail', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
+			{ displayName: 'Email', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
 			{ displayName: 'Telefone', name: 'telefone', type: 'string', default: '' },
 			{ displayName: 'Celular', name: 'celular', type: 'string', default: '' },
-			{ displayName: 'IDs de Clientes (separados por vírgula)', name: 'idsClientes', type: 'string', default: '', placeholder: '1,2,3' },
+			{ displayName: 'IDs De Clientes (Separados Por Vírgula)', name: 'idsClientes', type: 'string', default: '', placeholder: '1,2,3' },
 		],
 	},
 
 	// ── Editar ───────────────────────────────────────────────────────────────────
 	{
-		displayName: 'ID da Pessoa',
+		displayName: 'ID Da Pessoa',
 		name: 'personEditId',
 		type: 'number',
 		default: 0,
@@ -117,24 +117,24 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['person'], operation: ['put'] } },
 	},
 	{
-		displayName: 'Campos a Atualizar',
+		displayName: 'Campos A Atualizar',
 		name: 'personPutFields',
 		type: 'collection',
 		placeholder: 'Adicionar campo',
 		default: {},
 		displayOptions: { show: { resource: ['person'], operation: ['put'] } },
 		options: [
-			{ displayName: 'Nome', name: 'nome', type: 'string', default: '' },
-			{ displayName: 'E-mail', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
-			{ displayName: 'Telefone', name: 'telefone', type: 'string', default: '' },
-			{ displayName: 'Celular', name: 'celular', type: 'string', default: '' },
 			{ displayName: 'Ativo', name: 'ativo', type: 'boolean', default: true },
+			{ displayName: 'Celular', name: 'celular', type: 'string', default: '' },
+			{ displayName: 'Email', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
+			{ displayName: 'Nome', name: 'nome', type: 'string', default: '' },
+			{ displayName: 'Telefone', name: 'telefone', type: 'string', default: '' },	
 		],
 	},
 
 	// ── Ativar/Inativar em Lote ──────────────────────────────────────────────────
 	{
-		displayName: 'IDs das Pessoas (separados por vírgula)',
+		displayName: 'IDs Das Pessoas (Separados Por Vírgula)',
 		name: 'personStatusIds',
 		type: 'string',
 		default: '',
@@ -154,7 +154,7 @@ export const description: INodeProperties[] = [
 
 	// ── Vincular / Desvincular Clientes ──────────────────────────────────────────
 	{
-		displayName: 'ID da Pessoa',
+		displayName: 'ID Da Pessoa',
 		name: 'personLinkId',
 		type: 'number',
 		default: 0,
@@ -162,7 +162,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['person'], operation: ['linkClients', 'unlinkClients'] } },
 	},
 	{
-		displayName: 'IDs dos Clientes (separados por vírgula)',
+		displayName: 'IDs Dos Clientes (Separados Por Vírgula)',
 		name: 'personLinkClientIds',
 		type: 'string',
 		default: '',

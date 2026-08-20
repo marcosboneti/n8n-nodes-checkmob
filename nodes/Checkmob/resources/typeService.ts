@@ -10,7 +10,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['typeService'] } },
 		options: [
-			{ name: 'Listar', value: 'list', description: 'Listar tipos de serviço', action: 'Listar tipos de serviço' },
+			{ name: 'Listar', value: 'list', description: 'Listar tipos de serviço', action: 'Listar tipos de servico' },
 		],
 		default: 'list',
 	},

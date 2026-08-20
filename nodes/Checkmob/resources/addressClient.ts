@@ -10,13 +10,13 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['addressClient'] } },
 		options: [
-			{ name: 'Listar', value: 'get', description: 'Listar endereços do cliente', action: 'Listar endereços do cliente' },
-			{ name: 'Substituir Principal', value: 'put', description: 'Substituir o endereço principal do cliente', action: 'Substituir endereço do cliente' },
+			{ name: 'Listar', value: 'get', description: 'Listar endereços do cliente', action: 'Listar enderecos do cliente' },
+			{ name: 'Substituir Principal', value: 'put', description: 'Substituir o endereço principal do cliente', action: 'Substituir endereco do cliente' },
 		],
 		default: 'get',
 	},
 	{
-		displayName: 'ID do Cliente',
+		displayName: 'ID Do Cliente',
 		name: 'addrClientId',
 		type: 'number',
 		default: 0,

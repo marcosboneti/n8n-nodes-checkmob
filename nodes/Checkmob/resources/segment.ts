@@ -23,24 +23,24 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['segment'] } },
 		options: [
 			{ name: 'Buscar', value: 'get', description: 'Buscar segmento pelo ID', action: 'Buscar segmento' },
-			{ name: 'Listar', value: 'list', description: 'Listar segmentos', action: 'Listar segmentos' },
 			{ name: 'Criar', value: 'post', description: 'Criar segmento', action: 'Criar segmento' },
 			{ name: 'Editar', value: 'put', description: 'Substituir segmento', action: 'Editar segmento' },
 			{ name: 'Excluir', value: 'delete', description: 'Excluir um segmento', action: 'Excluir segmento' },
-			{ name: 'Obter Vínculos', value: 'getLinks', description: 'Obter vínculos (usuários e grupos) do segmento', action: 'Obter vínculos do segmento' },
+			{ name: 'Listar', value: 'list', description: 'Listar segmentos', action: 'Listar segmentos' },
+			{ name: 'Obter Vínculos', value: 'getLinks', description: 'Obter vínculos (usuários e grupos) do segmento', action: 'Obter vinculo do segmento' },
+			{ name: 'Remover Vínculo De Cliente', value: 'deleteLinkClient', description: 'Desvincular um cliente do segmento', action: 'Remover vinculo de cliente' },
+			{ name: 'Remover Vínculo De Grupo', value: 'deleteLinkGroup', description: 'Desvincular um grupo do segmento', action: 'Remover vinculo de grupo' },
+			{ name: 'Remover Vínculo De Usuário', value: 'deleteLinkUser', description: 'Desvincular um usuário do segmento', action: 'Remover vinculo de usuario' },
 			{ name: 'Vincular Cliente', value: 'linkClient', description: 'Vincular um cliente ao segmento', action: 'Vincular cliente ao segmento' },
-			{ name: 'Remover Vínculo de Cliente', value: 'deleteLinkClient', description: 'Desvincular um cliente do segmento', action: 'Remover vínculo de cliente' },
 			{ name: 'Vincular Grupo', value: 'linkGroup', description: 'Vincular um grupo ao segmento', action: 'Vincular grupo ao segmento' },
-			{ name: 'Remover Vínculo de Grupo', value: 'deleteLinkGroup', description: 'Desvincular um grupo do segmento', action: 'Remover vínculo de grupo' },
-			{ name: 'Vincular Usuário', value: 'linkUser', description: 'Vincular um usuário ao segmento', action: 'Vincular usuário ao segmento' },
-			{ name: 'Remover Vínculo de Usuário', value: 'deleteLinkUser', description: 'Desvincular um usuário do segmento', action: 'Remover vínculo de usuário' },
+			{ name: 'Vincular Usuário', value: 'linkUser', description: 'Vincular um usuário ao segmento', action: 'Vincular usuario ao segmento' },
 		],
 		default: 'list',
 	},
 
 	// ── Buscar / Editar / Excluir / Obter Vínculos ──────────────────────────────
 	{
-		displayName: 'ID do Segmento',
+		displayName: 'ID Do Segmento',
 		name: 'segmentId',
 		type: 'number',
 		default: 0,
@@ -102,7 +102,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['segment'], operation: ['post'] } },
 	},
 	{
-		displayName: 'IDs de Usuários (separados por vírgula)',
+		displayName: 'IDs De Usuários (Separados Por Vírgula)',
 		name: 'segIdsUsers',
 		type: 'string',
 		default: '',
@@ -110,7 +110,7 @@ export const description: INodeProperties[] = [
 		placeholder: '1,2,3',
 	},
 	{
-		displayName: 'IDs de Grupos (separados por vírgula)',
+		displayName: 'IDs De Grupos (Separados Por Vírgula)',
 		name: 'segIdsGroups',
 		type: 'string',
 		default: '',
@@ -142,7 +142,7 @@ export const description: INodeProperties[] = [
 
 	// ── Operações de Vínculo ─────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Segmento',
+		displayName: 'ID Do Segmento',
 		name: 'segmentLinkId',
 		type: 'number',
 		default: 0,
@@ -150,7 +150,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['segment'], operation: ['linkClient', 'deleteLinkClient', 'linkGroup', 'deleteLinkGroup', 'linkUser', 'deleteLinkUser'] } },
 	},
 	{
-		displayName: 'ID do Cliente',
+		displayName: 'ID Do Cliente',
 		name: 'segLinkedIdClient',
 		type: 'number',
 		default: 0,
@@ -158,7 +158,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['segment'], operation: ['linkClient', 'deleteLinkClient'] } },
 	},
 	{
-		displayName: 'ID do Grupo',
+		displayName: 'ID Do Grupo',
 		name: 'segLinkedIdGroup',
 		type: 'number',
 		default: 0,
@@ -166,7 +166,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['segment'], operation: ['linkGroup', 'deleteLinkGroup'] } },
 	},
 	{
-		displayName: 'ID do Usuário',
+		displayName: 'ID Do Usuário',
 		name: 'segLinkedIdUser',
 		type: 'number',
 		default: 0,

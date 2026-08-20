@@ -10,13 +10,13 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['addressPerson'] } },
 		options: [
-			{ name: 'Buscar', value: 'get', description: 'Buscar o endereço da pessoa', action: 'Buscar endereço de pessoa' },
-			{ name: 'Substituir', value: 'put', description: 'Substituir o endereço da pessoa', action: 'Substituir endereço de pessoa' },
+			{ name: 'Buscar', value: 'get', description: 'Buscar o endereço da pessoa', action: 'Buscar endereco de pessoa' },
+			{ name: 'Substituir', value: 'put', description: 'Substituir o endereço da pessoa', action: 'Substituir endereco de pessoa' },
 		],
 		default: 'get',
 	},
 	{
-		displayName: 'ID da Pessoa',
+		displayName: 'ID Da Pessoa',
 		name: 'addrPersonId',
 		type: 'number',
 		default: 0,
@@ -59,14 +59,14 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
 	},
 	{
-		displayName: 'ID da Cidade',
+		displayName: 'ID Da Cidade',
 		name: 'addrIdCity',
 		type: 'number',
 		default: 0,
 		displayOptions: { show: { resource: ['addressPerson'], operation: ['put'] } },
 	},
 	{
-		displayName: 'ID do Estado',
+		displayName: 'ID Do Estado',
 		name: 'addrIdState',
 		type: 'number',
 		default: 0,

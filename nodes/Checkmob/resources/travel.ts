@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['travel'] } },
 		options: [
-			{ name: 'Resumo por Usuário', value: 'listUsers', description: 'Resumo de deslocamento consolidado por usuário', action: 'Listar resumo de deslocamento por usuário' },
+			{ name: 'Resumo Por Usuário', value: 'listUsers', description: 'Resumo de deslocamento consolidado por usuário', action: 'Listar resumo de deslocamento por usuario' },
 			{ name: 'Listar Dias', value: 'listDays', description: 'Dias de deslocamento de um usuário', action: 'Listar dias de deslocamento' },
 			{ name: 'Listar Percursos', value: 'listRoutes', description: 'Percursos (origem → destino) de um dia de deslocamento', action: 'Listar percursos de deslocamento' },
 		],
@@ -84,7 +84,7 @@ export const description: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'IDs de Usuário (separados por vírgula)',
+		displayName: 'IDs De Usuário (Separados Por Vírgula)',
 		name: 'travelIdsUser',
 		type: 'string',
 		default: '',
@@ -92,7 +92,7 @@ export const description: INodeProperties[] = [
 		placeholder: '1,2,3',
 	},
 	{
-		displayName: 'IDs de Grupo (separados por vírgula)',
+		displayName: 'IDs De Grupo (Separados Por Vírgula)',
 		name: 'travelIdsGroup',
 		type: 'string',
 		default: '',
@@ -102,7 +102,7 @@ export const description: INodeProperties[] = [
 
 	// ── Listar Dias / Listar Percursos ───────────────────────────────────────────
 	{
-		displayName: 'ID do Usuário',
+		displayName: 'ID Do Usuário',
 		name: 'travelIdUser',
 		type: 'number',
 		default: 0,
@@ -113,7 +113,7 @@ export const description: INodeProperties[] = [
 
 	// ── Listar Percursos ──────────────────────────────────────────────────────────
 	{
-		displayName: 'ID do Dia',
+		displayName: 'ID Do Dia',
 		name: 'travelIdDay',
 		type: 'number',
 		default: 0,
