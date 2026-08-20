@@ -8,8 +8,9 @@ import type {
 	INodeTypeDescription,
 	IDataObject,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import * as category from './resources/category';
 import * as customField from './resources/customField';
@@ -73,26 +74,26 @@ const resourceSelector: INodeProperties = {
 	type: 'options',
 	noDataExpression: true,
 	options: [
-		{ name: 'Categoria', value: 'category', description: 'Listar categorias' },
 		{ name: 'Campo Personalizado', value: 'customField', description: 'Listar campos personalizados' },
+		{ name: 'Categoria', value: 'category', description: 'Listar categorias' },
 		{ name: 'Cliente', value: 'client', description: 'Gerenciar clientes' },
-		{ name: 'Endereço do Cliente', value: 'addressClient', description: 'Listar e substituir endereço do cliente' },
-		{ name: 'Endereço de Pessoa', value: 'addressPerson', description: 'Buscar e substituir endereço de pessoa' },
+		{ name: 'Deslocamento', value: 'travel', description: 'Consultar quilometragem, custo e aprovação de deslocamentos' },
+		{ name: 'Endereço De Pessoa', value: 'addressPerson', description: 'Buscar e substituir endereço de pessoa' },
+		{ name: 'Endereço Do Cliente', value: 'addressClient', description: 'Listar e substituir endereço do cliente' },
 		{ name: 'Etapa', value: 'step', description: 'Listar etapas' },
 		{ name: 'Grupo', value: 'group', description: 'Gerenciar grupos' },
-		{ name: 'Nota do Cliente', value: 'noteClient', description: 'Gerenciar notas do cliente' },
+		{ name: 'Nota Do Cliente', value: 'noteClient', description: 'Gerenciar notas do cliente' },
 		{ name: 'Objetivo', value: 'objective', description: 'Listar objetivos' },
-		{ name: 'Ordem de Serviço', value: 'serviceOrder', description: 'Gerenciar ordens de serviço' },
+		{ name: 'Ordem De Serviço', value: 'serviceOrder', description: 'Gerenciar ordens de serviço' },
 		{ name: 'Pessoa', value: 'person', description: 'Gerenciar pessoas' },
 		{ name: 'Questionário', value: 'checklist', description: 'Consultar questionários e gerenciar vínculos' },
 		{ name: 'Registro', value: 'service', description: 'Gerenciar registros (visitas)' },
-		{ name: 'Respostas de Questionário', value: 'answerChecklist', description: 'Consultar respostas de questionários' },
+		{ name: 'Respostas De Questionário', value: 'answerChecklist', description: 'Consultar respostas de questionários' },
 		{ name: 'Segmento', value: 'segment', description: 'Gerenciar segmentos' },
-		{ name: 'Setor de Mercado', value: 'marketSector', description: 'Listar setores de mercado' },
-		{ name: 'Status de Serviço', value: 'serviceStatus', description: 'Listar status de serviço' },
+		{ name: 'Setor De Mercado', value: 'marketSector', description: 'Listar setores de mercado' },
+		{ name: 'Status De Serviço', value: 'serviceStatus', description: 'Listar status de serviço' },
 		{ name: 'Temperatura', value: 'temperature', description: 'Listar temperaturas' },
-		{ name: 'Tipo de Serviço', value: 'typeService', description: 'Listar tipos de serviço' },
-		{ name: 'Deslocamento', value: 'travel', description: 'Consultar quilometragem, custo e aprovação de deslocamentos' },
+		{ name: 'Tipo De Serviço', value: 'typeService', description: 'Listar tipos de serviço' },
 		{ name: 'Usuário', value: 'user', description: 'Listar usuários e localização' },
 	],
 	default: 'category',
@@ -105,7 +106,7 @@ const languageSelector: INodeProperties = {
 	type: 'options',
 	noDataExpression: true,
 	options: [
-		{ name: 'Português (pt-BR)', value: 'pt-BR' },
+		{ name: 'Português (Pt-BR)', value: 'pt-BR' },
 		{ name: 'English (en-US)', value: 'en-US' },
 	],
 	default: 'pt-BR',
@@ -122,8 +123,8 @@ export class Checkmob implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interact with the Checkmob Field Service API v2',
 		defaults: { name: 'Checkmob' },
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'checkmobApi', required: true, testedBy: 'testCheckmobApi' }],
 		properties: [
 			resourceSelector,
@@ -150,6 +151,7 @@ export class Checkmob implements INodeType {
 			...answerChecklist.description,
 			...travel.description,
 		],
+		usableAsTool: true,
 	};
 
 	methods = {
@@ -253,7 +255,12 @@ export class Checkmob implements INodeType {
 					returnData.push({ json, pairedItem: { item: i } });
 					continue;
 				}
-				throw error;
+				if (error instanceof NodeOperationError || error instanceof NodeApiError) {
+					throw new NodeOperationError(this.getNode(), error.message, {
+						description: error.description ?? undefined,
+					});
+				}
+				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 		}
 
