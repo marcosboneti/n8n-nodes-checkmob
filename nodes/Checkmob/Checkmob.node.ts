@@ -190,46 +190,9 @@ export class Checkmob implements INodeType {
 		const credentials = await this.getCredentials('checkmobApi');
 		const baseUrl = (credentials.baseUrl as string).replace(/\/$/, '');
 
-		const staticData = this.getWorkflowStaticData('node');
-		const now = Date.now();
-		const tokenExpiry = (staticData.tokenExpiry as number) ?? 0;
-
-		if (!staticData.accessToken || now >= tokenExpiry) {
-			// httpRequestWithAuthentication não se aplica aqui: este é o próprio login que
-			// gera o token (n8n's preAuthentication não funciona nesta versão — ver credencial).
-			// eslint-disable-next-line @n8n/community-nodes/no-http-request-with-manual-auth
-			const loginResponse = await this.helpers.httpRequest({
-				method: 'POST',
-				url: `${baseUrl}/v2/token`,
-				headers: { 'Content-Type': 'application/json', 'Accept-Language': 'pt-BR' },
-				body: {
-					login: credentials.login as string,
-					senha: credentials.password as string,
-				},
-				json: true,
-			});
-
-			if (!loginResponse?.token_acesso) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Login falhou. Verifique seu login e senha nas configurações da credencial.',
-				);
-			}
-
-			staticData.accessToken = loginResponse.token_acesso as string;
-
-			const expiraEm = loginResponse.expira_em as string | undefined;
-			const expiryMs = expiraEm
-				? new Date(expiraEm).getTime() - 60_000
-				: now + 59 * 60 * 1000;
-			staticData.tokenExpiry = expiryMs;
-		}
-
-		const token = staticData.accessToken as string;
 		const lang = this.getNodeParameter('language', 0, 'pt-BR') as string;
 		const authHeaders: IDataObject = {
 			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`,
 			'Accept-Language': lang,
 		};
 

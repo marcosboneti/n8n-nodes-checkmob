@@ -27,7 +27,7 @@ export async function apiRequest(
 	this: IExecuteFunctions,
 	options: { method: string; url: string; headers: IDataObject; body?: IDataObject; qs?: IDataObject },
 ): Promise<{ statusCode: number; body: unknown }> {
-	const res = await this.helpers.httpRequest({
+	const res = await this.helpers.httpRequestWithAuthentication.call(this, 'checkmobApi', {
 		method: options.method as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 		url: options.url,
 		headers: options.headers,
