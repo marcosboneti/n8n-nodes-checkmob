@@ -117,7 +117,7 @@ export class Checkmob implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Checkmob',
 		name: 'checkmob',
-		icon: 'file:checkmob.png',
+		icon: { light: 'file:checkmob.svg', dark: 'file:checkmob.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
