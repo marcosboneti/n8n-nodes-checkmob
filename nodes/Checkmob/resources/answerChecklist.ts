@@ -10,7 +10,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['answerChecklist'] } },
 		options: [
-			{ name: 'Buscar por Registro', value: 'get', description: 'Buscar respostas pelo ID do registro. 404 significa que não houve questionário nesta visita (não é erro de integração)', action: 'Buscar respostas por registro' },
+			{ name: 'Buscar por Registro', value: 'get', description: 'Buscar respostas pelo ID do registro. 404 significa que não houve questionário nesta visita (não é erro de integração).', action: 'Buscar respostas por registro' },
 			{ name: 'Buscar por Ordem de Serviço', value: 'getByServiceOrder', description: 'Buscar respostas pelo ID da ordem de serviço', action: 'Buscar respostas por OS' },
 			{ name: 'Listar', value: 'list', description: 'Listar questionários respondidos (resumo)', action: 'Listar questionários respondidos' },
 		],

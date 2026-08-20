@@ -15,9 +15,9 @@ export const description: INodeProperties[] = [
 			{ name: 'Criar', value: 'post', description: 'Criar uma nova pessoa', action: 'Criar pessoa' },
 			{ name: 'Editar', value: 'put', description: 'Editar uma pessoa existente', action: 'Editar pessoa' },
 			{ name: 'Excluir', value: 'delete', description: 'Excluir uma pessoa', action: 'Excluir pessoa' },
-			{ name: 'Ativar/Inativar em Lote', value: 'status', description: 'Ativar ou inativar pessoas em lote (máx. 500)', action: 'Ativar ou inativar pessoas' },
-			{ name: 'Vincular Clientes', value: 'linkClients', description: 'Vincular uma pessoa a um ou mais clientes (máx. 500)', action: 'Vincular pessoa a clientes' },
-			{ name: 'Desvincular Clientes', value: 'unlinkClients', description: 'Desfazer vínculo entre pessoa e clientes (máx. 500)', action: 'Desvincular pessoa de clientes' },
+			{ name: 'Ativar/Inativar em Lote', value: 'status', description: 'Ativar ou inativar pessoas em lote (máx. 500).', action: 'Ativar ou inativar pessoas' },
+			{ name: 'Vincular Clientes', value: 'linkClients', description: 'Vincular uma pessoa a um ou mais clientes (máx. 500).', action: 'Vincular pessoa a clientes' },
+			{ name: 'Desvincular Clientes', value: 'unlinkClients', description: 'Desfazer vínculo entre pessoa e clientes (máx. 500).', action: 'Desvincular pessoa de clientes' },
 		],
 		default: 'list',
 	},
@@ -66,7 +66,7 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: { show: { resource: ['person'], operation: ['list'] } },
 		options: [
-			{ displayName: 'E-mail', name: 'email', type: 'string', default: '' },
+			{ displayName: 'E-mail', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
 			{ displayName: 'IDs (separados por vírgula)', name: 'ids', type: 'string', default: '', placeholder: '1,2,3' },
 			{ displayName: 'IDs de Clientes (separados por vírgula)', name: 'ids_clientes', type: 'string', default: '', placeholder: '1,2,3' },
 			{ displayName: 'Atualizado Após', name: 'atualizado_apos', type: 'dateTime', default: '', description: 'Sync incremental' },
@@ -100,7 +100,7 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: { show: { resource: ['person'], operation: ['post'] } },
 		options: [
-			{ displayName: 'E-mail', name: 'email', type: 'string', default: '' },
+			{ displayName: 'E-mail', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
 			{ displayName: 'Telefone', name: 'telefone', type: 'string', default: '' },
 			{ displayName: 'Celular', name: 'celular', type: 'string', default: '' },
 			{ displayName: 'IDs de Clientes (separados por vírgula)', name: 'idsClientes', type: 'string', default: '', placeholder: '1,2,3' },
@@ -125,7 +125,7 @@ export const description: INodeProperties[] = [
 		displayOptions: { show: { resource: ['person'], operation: ['put'] } },
 		options: [
 			{ displayName: 'Nome', name: 'nome', type: 'string', default: '' },
-			{ displayName: 'E-mail', name: 'email', type: 'string', default: '' },
+			{ displayName: 'E-mail', name: 'email', type: 'string', default: '', placeholder: 'name@email.com' },
 			{ displayName: 'Telefone', name: 'telefone', type: 'string', default: '' },
 			{ displayName: 'Celular', name: 'celular', type: 'string', default: '' },
 			{ displayName: 'Ativo', name: 'ativo', type: 'boolean', default: true },
@@ -140,7 +140,7 @@ export const description: INodeProperties[] = [
 		default: '',
 		required: true,
 		displayOptions: { show: { resource: ['person'], operation: ['status'] } },
-		description: 'Máximo 500 por chamada. Ex: 1,2,3',
+		description: 'Máximo 500 por chamada. Ex: 1,2,3.',
 		placeholder: '1,2,3',
 	},
 	{
@@ -168,7 +168,7 @@ export const description: INodeProperties[] = [
 		default: '',
 		required: true,
 		displayOptions: { show: { resource: ['person'], operation: ['linkClients', 'unlinkClients'] } },
-		description: 'Máximo 500 por chamada. Ex: 1,2,3',
+		description: 'Máximo 500 por chamada. Ex: 1,2,3.',
 		placeholder: '1,2,3',
 	},
 ];

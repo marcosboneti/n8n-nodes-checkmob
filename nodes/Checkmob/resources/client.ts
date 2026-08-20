@@ -13,12 +13,12 @@ export const description: INodeProperties[] = [
 			{ name: 'Listar', value: 'list', description: 'Buscar clientes de forma paginada e com filtros', action: 'Listar clientes' },
 			{ name: 'Buscar', value: 'get', description: 'Buscar um cliente pelo ID', action: 'Buscar cliente' },
 			{ name: 'Criar', value: 'post', description: 'Criar um novo cliente', action: 'Criar cliente' },
-			{ name: 'Criar em Lote', value: 'postBulk', description: 'Criar múltiplos clientes em uma única chamada (máx. 500)', action: 'Criar clientes em lote' },
+			{ name: 'Criar em Lote', value: 'postBulk', description: 'Criar múltiplos clientes em uma única chamada (máx. 500).', action: 'Criar clientes em lote' },
 			{ name: 'Substituir', value: 'put', description: 'Substituir um cliente existente', action: 'Substituir cliente' },
 			{ name: 'Editar Parcialmente', value: 'patch', description: 'Atualizar parcialmente um cliente existente', action: 'Editar cliente parcialmente' },
 			{ name: 'Excluir', value: 'delete', description: 'Excluir um cliente', action: 'Excluir cliente' },
-			{ name: 'Vincular Pessoas', value: 'linkPeople', description: 'Vincular uma ou mais pessoas ao cliente (máx. 500)', action: 'Vincular pessoas ao cliente' },
-			{ name: 'Desvincular Pessoas', value: 'unlinkPeople', description: 'Desfazer vínculo entre cliente e pessoas (máx. 500)', action: 'Desvincular pessoas do cliente' },
+			{ name: 'Vincular Pessoas', value: 'linkPeople', description: 'Vincular uma ou mais pessoas ao cliente (máx. 500).', action: 'Vincular pessoas ao cliente' },
+			{ name: 'Desvincular Pessoas', value: 'unlinkPeople', description: 'Desfazer vínculo entre cliente e pessoas (máx. 500).', action: 'Desvincular pessoas do cliente' },
 		],
 		default: 'list',
 	},
@@ -164,7 +164,7 @@ export const description: INodeProperties[] = [
 		default: '[]',
 		required: true,
 		displayOptions: { show: { resource: ['client'], operation: ['postBulk'] } },
-		description: 'Array JSON com até 500 clientes a criar. Ex: [{"tipo":"J","nome":"Empresa","documento":"123","ativo":true}]',
+		description: 'Array JSON com até 500 clientes a criar. Ex: [{"tipo":"J","nome":"Empresa","documento":"123","ativo":true}].',
 	},
 
 	// ── Vincular / Desvincular Pessoas ───────────────────────────────────────────
@@ -183,7 +183,7 @@ export const description: INodeProperties[] = [
 		default: '',
 		required: true,
 		displayOptions: { show: { resource: ['client'], operation: ['linkPeople', 'unlinkPeople'] } },
-		description: 'Máximo 500 por chamada. Ex: 1,2,3',
+		description: 'Máximo 500 por chamada. Ex: 1,2,3.',
 		placeholder: '1,2,3',
 	},
 ];

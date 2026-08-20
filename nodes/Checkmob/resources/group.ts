@@ -52,7 +52,7 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['group'], operation: ['list'] } },
-		description: 'Filtrar grupos que contêm estes usuários. Ex: 1,2,3',
+		description: 'Filtrar grupos que contêm estes usuários. Ex: 1,2,3.',
 		placeholder: '1,2,3',
 	},
 	{
@@ -72,7 +72,6 @@ export const description: INodeProperties[] = [
 		default: 0,
 		required: true,
 		displayOptions: { show: { resource: ['group'], operation: ['get', 'put', 'delete'] } },
-		description: 'ID do grupo',
 	},
 
 	// ── Criar / Editar ───────────────────────────────────────────────────────────
@@ -91,7 +90,7 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		displayOptions: { show: { resource: ['group'], operation: ['post', 'put'] } },
-		description: 'IDs dos usuários que fazem parte do grupo. Ex: 1,2,3',
+		description: 'IDs dos usuários que fazem parte do grupo. Ex: 1,2,3.',
 		placeholder: '1,2,3',
 	},
 	{

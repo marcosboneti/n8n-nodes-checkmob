@@ -15,7 +15,7 @@ export const description: INodeProperties[] = [
 			{ name: 'Criar', value: 'post', description: 'Criar ordem de serviço', action: 'Criar ordem de serviço' },
 			{ name: 'Substituir', value: 'put', description: 'Substituir ordem de serviço (campo ausente preserva valor atual)', action: 'Substituir ordem de serviço' },
 			{ name: 'Excluir', value: 'delete', description: 'Excluir uma ordem de serviço', action: 'Excluir ordem de serviço' },
-			{ name: 'Excluir em Lote', value: 'deleteBulk', description: 'Excluir ordens de serviço em lote pelos IDs (máx. 500)', action: 'Excluir ordens de serviço em lote' },
+			{ name: 'Excluir em Lote', value: 'deleteBulk', description: 'Excluir ordens de serviço em lote pelos IDs (máx. 500).', action: 'Excluir ordens de serviço em lote' },
 			{ name: 'Listar Status', value: 'listStatus', description: 'Listar status disponíveis das OS', action: 'Listar status de OS' },
 			{ name: 'Alterar Status', value: 'changeStatus', description: 'Alterar status de uma OS', action: 'Alterar status de OS' },
 		],
@@ -161,7 +161,7 @@ export const description: INodeProperties[] = [
 		default: '',
 		required: true,
 		displayOptions: { show: { resource: ['serviceOrder'], operation: ['deleteBulk'] } },
-		description: 'Máximo 500 por chamada. Ex: 1,2,3',
+		description: 'Máximo 500 por chamada. Ex: 1,2,3.',
 		placeholder: '1,2,3',
 	},
 
