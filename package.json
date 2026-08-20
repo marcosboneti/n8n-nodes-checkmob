@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-checkmob",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "n8n community node for Checkmob — field service management platform",
   "keywords": [
     "n8n-community-node-package",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/checkmob/n8n-nodes-checkmob.git"
+    "url": "git+https://github.com/marcosboneti/n8n-nodes-checkmob.git"
   },
   "main": "dist/index.js",
   "scripts": {
