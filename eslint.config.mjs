@@ -14,10 +14,6 @@ export default [
 			// funcional/lógico já usado nas listas de operação e filtros do node.
 			'n8n-nodes-base/node-param-options-type-unsorted-items': 'off',
 			'n8n-nodes-base/node-param-collection-type-unsorted-items': 'off',
-			// Ícone atual é PNG único (checkmob.png); não há SVG nem variantes
-			// light/dark do logo disponíveis.
-			'n8n-nodes-base/node-class-description-icon-not-svg': 'off',
-			'@n8n/community-nodes/icon-prefer-themed-variants': 'off',
 		},
 	},
 ];

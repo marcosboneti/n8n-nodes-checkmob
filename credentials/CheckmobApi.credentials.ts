@@ -4,7 +4,7 @@ export class CheckmobApi implements ICredentialType {
 	name = 'checkmobApi';
 	displayName = 'Checkmob API';
 	documentationUrl = 'https://api-integration.checkmob.com/index.html';
-	icon = 'file:checkmob.png' as const;
+	icon = { light: 'file:checkmob.svg', dark: 'file:checkmob.dark.svg' } as const;
 
 	properties: INodeProperties[] = [
 		{
